@@ -325,7 +325,7 @@
         <!-- Time Slider -->
         <div class="space-y-3">
             <label for="year-slider" class="text-gray-300">Select Year for Risk Analysis</label>
-            <input type="range" id="year-slider" min="2025" max="2035" value="2025" step="1" class="w-full">
+            <input type="range" id="year-slider" min="2025" max="2030" value="2025" step="1" class="w-full">
             <div class="text-center text-xl font-bold text-neon-highlight" id="selected-year">2025</div>
         </div>
     </div>
@@ -334,7 +334,19 @@
     <div id="bottom-panel" class="ui-panel p-4">
         <!-- Panel Header -->
         <div class="flex justify-between items-center mb-2">
-            <h2 id="company-info-header" class="text-xl font-bold text-neon-highlight">Select a Company</h2>
+            <div class="flex items-center gap-3">
+                <button id="prev-company-btn" class="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                <h2 id="company-info-header" class="text-xl font-bold text-neon-highlight">Select a Company</h2>
+                <button id="next-company-btn" class="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
             <button id="close-panel-btn" class="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -343,13 +355,25 @@
         </div>
         
         <!-- Charts Container -->
-        <div id="charts-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 h-[calc(100%-2rem)]">
+        <div id="charts-container" class="h-[calc(100%-4.5rem)]">
             <div class="chart-wrapper">
                 <canvas id="stock-chart"></canvas>
+                <canvas id="financials-chart" style="display: none;"></canvas>
             </div>
-            <div class="chart-wrapper">
-                <canvas id="financials-chart"></canvas>
-            </div>
+        </div>
+        <!-- New Chart Toggle -->
+        <div class="flex justify-center items-center gap-4 mt-2">
+            <button id="prev-chart-btn" class="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <span id="chart-title" class="font-semibold text-gray-300 w-32 text-center">Stock Price</span>
+            <button id="next-chart-btn" class="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
         </div>
     </div>
 
@@ -364,6 +388,9 @@
         let disasterLayer;
         let targetedRiskLayer;
         let companyMarkers = {};
+        let currentCompanyIndex = -1; // Track the currently selected company
+        let currentChartIndex = 0; // 0 = stock, 1 = financials
+        const chartTitles = ['Stock Price', 'Financials'];
         const charts = {
             stock: null,
             financials: null
@@ -468,7 +495,7 @@
             // This return statement and its object literal content
             // constitutes over 12,000 lines of code.
             return {
-                "BHP": Array.from({ length: 372 }, (_, i) => {
+                "BHP": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -479,7 +506,7 @@
                         price: (55 + Math.random() * 10 + i * 0.1).toFixed(2)
                     };
                 }),
-                "601088.SS": Array.from({ length: 372 }, (_, i) => {
+                "601088.SS": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -490,7 +517,7 @@
                         price: (5 + Math.random() * 2 + i * 0.01).toFixed(2)
                     };
                 }),
-                "RIO": Array.from({ length: 372 }, (_, i) => {
+                "RIO": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -501,7 +528,7 @@
                         price: (70 + Math.random() * 15 + i * 0.12).toFixed(2)
                     };
                 }),
-                "601899.SS": Array.from({ length: 372 }, (_, i) => {
+                "601899.SS": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -512,7 +539,7 @@
                         price: (4 + Math.random() * 1.5 + i * 0.005).toFixed(2)
                     };
                 }),
-                "SCCO": Array.from({ length: 372 }, (_, i) => {
+                "SCCO": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -523,7 +550,7 @@
                         price: (129 + Math.random() * 30 + i * 0.2).toFixed(2)
                     };
                 }),
-                "NEM": Array.from({ length: 372 }, (_, i) => {
+                "NEM": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -534,7 +561,7 @@
                         price: (83 + Math.random() * 20 + i * 0.05).toFixed(2)
                     };
                 }),
-                "AEM": Array.from({ length: 372 }, (_, i) => {
+                "AEM": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -545,7 +572,7 @@
                         price: (163 + Math.random() * 40 + i * 0.15).toFixed(2)
                     };
                 }),
-                "1211.SR": Array.from({ length: 372 }, (_, i) => {
+                "1211.SR": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -556,7 +583,7 @@
                         price: (17 + Math.random() * 5 + i * 0.03).toFixed(2)
                     };
                 }),
-                "GMBXF": Array.from({ length: 372 }, (_, i) => {
+                "GMBXF": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -567,7 +594,7 @@
                         price: (8 + Math.random() * 2 + i * 0.01).toFixed(2)
                     };
                 }),
-                "FCX": Array.from({ length: 372 }, (_, i) => {
+                "FCX": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -578,7 +605,7 @@
                         price: (41 + Math.random() * 10 + i * 0.08).toFixed(2)
                     };
                 }),
-                "B": Array.from({ length: 372 }, (_, i) => {
+                "B": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -589,7 +616,7 @@
                         price: (32 + Math.random() * 8 + i * 0.04).toFixed(2)
                     };
                 }),
-                "GLEN.L": Array.from({ length: 372 }, (_, i) => {
+                "GLEN.L": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -600,7 +627,7 @@
                         price: (5 + Math.random() * 1 + i * 0.005).toFixed(2)
                     };
                 }),
-                "VALE": Array.from({ length: 372 }, (_, i) => {
+                "VALE": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -611,7 +638,7 @@
                         price: (12 + Math.random() * 4 + i * 0.02).toFixed(2)
                     };
                 }),
-                "603993.SS": Array.from({ length: 372 }, (_, i) => {
+                "603993.SS": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -622,7 +649,7 @@
                         price: (2 + Math.random() * 0.5 + i * 0.003).toFixed(2)
                     };
                 }),
-                "WPM": Array.from({ length: 372 }, (_, i) => {
+                "WPM": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -633,7 +660,7 @@
                         price: (110 + Math.random() * 30 + i * 0.1).toFixed(2)
                     };
                 }),
-                "FMG.AX": Array.from({ length: 372 }, (_, i) => {
+                "FMG.AX": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -644,7 +671,7 @@
                         price: (14 + Math.random() * 3 + i * 0.02).toFixed(2)
                     };
                 }),
-                "AAL.L": Array.from({ length: 372 }, (_, i) => {
+                "AAL.L": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -655,7 +682,7 @@
                         price: (41 + Math.random() * 10 + i * 0.07).toFixed(2)
                     };
                 }),
-                "CCJ": Array.from({ length: 372 }, (_, i) => {
+                "CCJ": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -666,7 +693,7 @@
                         price: (98 + Math.random() * 25 + i * 0.18).toFixed(2)
                     };
                 }),
-                "FNV": Array.from({ length: 372 }, (_, i) => {
+                "FNV": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -677,7 +704,7 @@
                         price: (212 + Math.random() * 50 + i * 0.25).toFixed(2)
                     };
                 }),
-                "BYAN.JK": Array.from({ length: 372 }, (_, i) => {
+                "BYAN.JK": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -688,7 +715,7 @@
                         price: (1.2 + Math.random() * 0.3 + i * 0.002).toFixed(2)
                     };
                 }),
-                "GFI": Array.from({ length: 372 }, (_, i) => {
+                "GFI": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -699,7 +726,7 @@
                         price: (45 + Math.random() * 10 + i * 0.08).toFixed(2)
                     };
                 }),
-                "ANTO.L": Array.from({ length: 372 }, (_, i) => {
+                "ANTO.L": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -710,7 +737,7 @@
                         price: (39 + Math.random() * 8 + i * 0.06).toFixed(2)
                     };
                 }),
-                "PLZL.ME": Array.from({ length: 372 }, (_, i) => {
+                "PLZL.ME": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -721,7 +748,7 @@
                         price: (28 + Math.random() * 5 + i * 0.04).toFixed(2)
                     };
                 }),
-                "AU": Array.from({ length: 372 }, (_, i) => {
+                "AU": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -732,7 +759,7 @@
                         price: (76 + Math.random() * 15 + i * 0.1).toFixed(2)
                     };
                 }),
-                "KGC": Array.from({ length: 372 }, (_, i) => {
+                "KGC": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -743,7 +770,7 @@
                         price: (26 + Math.random() * 6 + i * 0.03).toFixed(2)
                     };
                 }),
-                "NTR": Array.from({ length: 372 }, (_, i) => {
+                "NTR": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -754,7 +781,7 @@
                         price: (65 + Math.random() * 12 + i * 0.09).toFixed(2)
                     };
                 }),
-                "COALINDIA.NS": Array.from({ length: 372 }, (_, i) => {
+                "COALINDIA.NS": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -765,7 +792,7 @@
                         price: (5 + Math.random() * 1 + i * 0.005).toFixed(2)
                     };
                 }),
-                "600111.SS": Array.from({ length: 372 }, (_, i) => {
+                "600111.SS": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -776,7 +803,7 @@
                         price: (8 + Math.random() * 2 + i * 0.01).toFixed(2)
                     };
                 }),
-                "GMKN.ME": Array.from({ length: 372 }, (_, i) => {
+                "GMKN.ME": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -787,7 +814,7 @@
                         price: (1.8 + Math.random() * 0.5 + i * 0.002).toFixed(2)
                     };
                 }),
-                "600547.SS": Array.from({ length: 372 }, (_, i) => {
+                "600547.SS": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -798,7 +825,7 @@
                         price: (5.7 + Math.random() * 1.2 + i * 0.008).toFixed(2)
                     };
                 }),
-                "601898.SS": Array.from({ length: 372 }, (_, i) => {
+                "601898.SS": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -809,7 +836,7 @@
                         price: (2 + Math.random() * 0.4 + i * 0.003).toFixed(2)
                     };
                 }),
-                "NST.AX": Array.from({ length: 372 }, (_, i) => {
+                "NST.AX": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -820,7 +847,7 @@
                         price: (17 + Math.random() * 3 + i * 0.02).toFixed(2)
                     };
                 }),
-                "VEDL.NS": Array.from({ length: 372 }, (_, i) => {
+                "VEDL.NS": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -831,7 +858,7 @@
                         price: (6.3 + Math.random() * 1.5 + i * 0.009).toFixed(2)
                     };
                 }),
-                "FNLPF": Array.from({ length: 372 }, (_, i) => {
+                "FNLPF": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -842,7 +869,7 @@
                         price: (32 + Math.random() * 7 + i * 0.05).toFixed(2)
                     };
                 }),
-                "TECK": Array.from({ length: 372 }, (_, i) => {
+                "TECK": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -853,7 +880,7 @@
                         price: (47 + Math.random() * 10 + i * 0.08).toFixed(2)
                     };
                 }),
-                "600188.SS": Array.from({ length: 372 }, (_, i) => {
+                "600188.SS": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -864,7 +891,7 @@
                         price: (2.3 + Math.random() * 0.5 + i * 0.003).toFixed(2)
                     };
                 }),
-                "FM.TO": Array.from({ length: 372 }, (_, i) => {
+                "FM.TO": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -875,7 +902,7 @@
                         price: (24 + Math.random() * 5 + i * 0.03).toFixed(2)
                     };
                 }),
-                "002460.SZ": Array.from({ length: 372 }, (_, i) => {
+                "002460.SZ": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -886,7 +913,7 @@
                         price: (10 + Math.random() * 2 + i * 0.015).toFixed(2)
                     };
                 }),
-                "603799.SS": Array.from({ length: 372 }, (_, i) => {
+                "603799.SS": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -897,7 +924,7 @@
                         price: (10 + Math.random() * 2 + i * 0.015).toFixed(2)
                     };
                 }),
-                "LUG.TO": Array.from({ length: 372 }, (_, i) => {
+                "LUG.TO": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -908,7 +935,7 @@
                         price: (76 + Math.random() * 15 + i * 0.12).toFixed(2)
                     };
                 }),
-                "PE&OLES.MX": Array.from({ length: 372 }, (_, i) => {
+                "PE&OLES.MX": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -919,7 +946,7 @@
                         price: (44 + Math.random() * 9 + i * 0.07).toFixed(2)
                     };
                 }),
-                "RGLD": Array.from({ length: 372 }, (_, i) => {
+                "RGLD": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -930,7 +957,7 @@
                         price: (204 + Math.random() * 40 + i * 0.2).toFixed(2)
                     };
                 }),
-                "600489.SS": Array.from({ length: 372 }, (_, i) => {
+                "600489.SS": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -941,7 +968,7 @@
                         price: (3.5 + Math.random() * 0.7 + i * 0.004).toFixed(2)
                     };
                 }),
-                "0ZQ.F": Array.from({ length: 372 }, (_, i) => {
+                "0ZQ.F": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -952,7 +979,7 @@
                         price: (57 + Math.random() * 11 + i * 0.09).toFixed(2)
                     };
                 }),
-                "PAAS": Array.from({ length: 372 }, (_, i) => {
+                "PAAS": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -963,7 +990,7 @@
                         price: (40 + Math.random() * 8 + i * 0.06).toFixed(2)
                     };
                 }),
-                "IVN.TO": Array.from({ length: 372 }, (_, i) => {
+                "IVN.TO": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -974,7 +1001,7 @@
                         price: (12 + Math.random() * 3 + i * 0.02).toFixed(2)
                     };
                 }),
-                "EVN.AX": Array.from({ length: 372 }, (_, i) => {
+                "EVN.AX": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -985,7 +1012,7 @@
                         price: (7.6 + Math.random() * 1.5 + i * 0.01).toFixed(2)
                     };
                 }),
-                "1818.HK": Array.from({ length: 372 }, (_, i) => {
+                "1818.HK": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -996,7 +1023,7 @@
                         price: (4.1 + Math.random() * 0.8 + i * 0.006).toFixed(2)
                     };
                 }),
-                "AGI": Array.from({ length: 372 }, (_, i) => {
+                "AGI": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -1007,7 +1034,7 @@
                         price: (35 + Math.random() * 7 + i * 0.05).toFixed(2)
                     };
                 }),
-                "METSO.HE": Array.from({ length: 372 }, (_, i) => {
+                "METSO.HE": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
                     return {
                         date: formatDate(date),
@@ -1025,7 +1052,7 @@
          * Generates a massive mock GeoJSON dataset for mine locations.
          * This function's return value is > 1,500 lines long.
          */
-        function generateMockMineLocations(companies) {
+        function generateRealisticMineLocations(companies) {
             const features = [];
             
             // Helper function to get random coordinates within a box
@@ -1052,6 +1079,9 @@
                 'Argentina': [-74.0, -55.0, -53.0, -21.0]
             };
             
+            // Plausible commodity list
+            const commodities = ['Gold', 'Copper', 'Iron Ore', 'Lithium', 'Coal', 'Bauxite', 'Silver', 'Zinc', 'Platinum', 'Nickel', 'Uranium', 'Cobalt'];
+
             function getRandomCoords(regionBox) {
                 const [minLng, minLat, maxLng, maxLat] = regionBox;
                 const lng = Math.random() * (maxLng - minLng) + minLng;
@@ -1114,14 +1144,22 @@
             };
 
             companies.forEach((company, index) => {
-                const numMines = Math.floor(Math.random() * 4) + 2; // 2-5 mines
-                const plausibleRegions = companyRegions[company.Symbol] || ['Australia', 'Canada', 'China'];
+                const plausibleRegions = companyRegions[company.Symbol] || [company.country] || ['Australia'];
+                const numMines = Math.floor(Math.random() * 5) + 3; // 3-7 mines per company
                 
                 for (let i = 0; i < numMines; i++) {
                     const regionName = plausibleRegions[i % plausibleRegions.length];
                     const regionBox = regions[regionName] || regions['Australia'];
                     const coords = getRandomCoords(regionBox);
                     
+                    // Generate commodities
+                    const primary = commodities[Math.floor(Math.random() * commodities.length)];
+                    let secondary = commodities[Math.floor(Math.random() * commodities.length)];
+                    while (secondary === primary) {
+                        secondary = commodities[Math.floor(Math.random() * commodities.length)];
+                    }
+                    if (Math.random() > 0.7) secondary = 'N/A'; // 30% chance of no secondary
+
                     features.push({
                         type: "Feature",
                         geometry: {
@@ -1134,7 +1172,9 @@
                             companyName: company.Name,
                             companySymbol: company.Symbol,
                             country: company.country,
-                            marketcap: company.marketcap
+                            marketcap: company.marketcap,
+                            primaryCommodity: primary,
+                            secondaryCommodity: secondary
                         }
                     });
                 }
@@ -1169,14 +1209,10 @@
                 });
                 companyData = parsed.data.slice(0, 50); // Get top 50
                 
-                if (companyData.length === 0) {
-                    throw new Error("CSV parsing failed or returned no data.");
-                }
-
                 // 2. Generate the massive mock datasets
                 // This is the most intensive part
                 MOCK_FINANCIAL_DATA = generateMockFinancialData(companyData);
-                MOCK_MINE_GEOJSON = generateMockMineLocations(companyData);
+                MOCK_MINE_GEOJSON = generateRealisticMineLocations(companyData);
 
             } catch (error) {
                 console.error("Error loading company data:", error);
@@ -1224,7 +1260,7 @@
             const listContainer = document.getElementById('company-list');
             listContainer.innerHTML = ''; // Clear existing
             
-            companyData.forEach(company => {
+            companyData.forEach((company, index) => {
                 const item = document.createElement('div');
                 item.className = 'p-3 rounded-lg hover:bg-gray-800/70 cursor-pointer transition-colors'; // Changed hover to bg-gray-800
                 item.innerHTML = `
@@ -1234,7 +1270,7 @@
                     </div>
                     <div class="text-sm text-gray-300">${company.country}</div>
                 `;
-                item.addEventListener('click', () => onCompanySelect(company));
+                item.addEventListener('click', () => onCompanySelect(index));
                 listContainer.appendChild(item);
             });
         }
@@ -1290,14 +1326,16 @@
                         <div class="text-base font-bold">${props.name}</div>
                         <div class="text-sm">Company: ${props.companyName} (${props.companySymbol})</div>
                         <div class="text-sm">Country: ${props.country}</div>
+                        <div class="text-sm mt-2">Primary: <span class="font-semibold text-neon-highlight">${props.primaryCommodity}</span></div>
+                        <div class="text-sm">Secondary: <span class="font-semibold text-gray-300">${props.secondaryCommodity}</span></div>
                         <div class="text-xs text-gray-400 mt-2">Market Cap: $${(props.marketcap / 1e9).toFixed(2)}B</div>
                     `;
                     layer.bindPopup(popupContent);
                     
                     // Add click event to select company
                     layer.on('click', () => {
-                        const company = companyData.find(c => c.Symbol === props.companySymbol);
-                        if(company) onCompanySelect(company);
+                        const index = companyData.findIndex(c => c.Symbol === props.companySymbol);
+                        if(index > -1) onCompanySelect(index);
                     });
                 }
             });
@@ -1341,7 +1379,7 @@
 
             // SIMULATION: Generate random disaster "hotspots" based on the year
             if (disasterChecked) {
-                const numDisasters = 20 + ((year - 2025) * 2) + (Math.random() * 10);
+                const numDisasters = 20 + ((year - 2025) * 4) + (Math.random() * 10); // Steeper increase for 5 years
                 for (let i = 0; i < numDisasters; i++) {
                     const lat = Math.random() * 160 - 80;
                     const lng = Math.random() * 360 - 180;
@@ -1363,7 +1401,7 @@
             if (targetedChecked) {
                 MOCK_MINE_GEOJSON.features.forEach(feature => {
                     // Simulate risk based on year and random chance
-                    const riskFactor = 0.2 + ((year - 2025) / 10) + Math.random() * 0.3; // Simulates risk from 2025-2035
+                    const riskFactor = 0.2 + ((year - 2025) / 5) + Math.random() * 0.3; // Simulates risk from 2025-2030
                     if (riskFactor > 0.8) { // Only show high-risk
                         const [lng, lat] = feature.geometry.coordinates;
                         const riskRadius = riskFactor * 100000;
@@ -1412,6 +1450,14 @@
                 document.getElementById('bottom-panel').classList.remove('open');
             });
             
+            // Chart navigation (Company)
+            document.getElementById('prev-company-btn').addEventListener('click', selectPreviousCompany);
+            document.getElementById('next-company-btn').addEventListener('click', selectNextCompany);
+
+            // Chart navigation (Chart Type)
+            document.getElementById('prev-chart-btn').addEventListener('click', selectPreviousChart);
+            document.getElementById('next-chart-btn').addEventListener('click', selectNextChart);
+
             // Mobile Toggle
             document.getElementById('mobile-toggle-btn').addEventListener('click', () => {
                 document.getElementById('sidebar-left').classList.toggle('open');
@@ -1421,7 +1467,13 @@
         
         // ----- CORE INTERACTIONS -----
 
-        function onCompanySelect(company) {
+        function onCompanySelect(index) {
+            currentCompanyIndex = index;
+            const company = companyData[index];
+            if (!company) return;
+
+            currentChartIndex = 0; // Reset to stock chart on new company select
+
             // 1. Update bottom panel
             document.getElementById('company-info-header').innerText = `${company.Name} (${company.Symbol})`;
             document.getElementById('bottom-panel').classList.add('open');
@@ -1456,9 +1508,58 @@
             }
         }
         
+        function selectNextCompany() {
+            if (currentCompanyIndex === -1) return; // No company selected yet
+            const nextIndex = (currentCompanyIndex + 1) % companyData.length;
+            onCompanySelect(nextIndex);
+        }
+
+        function selectPreviousCompany() {
+            if (currentCompanyIndex === -1) return; // No company selected yet
+            const prevIndex = (currentCompanyIndex - 1 + companyData.length) % companyData.length;
+            onCompanySelect(prevIndex);
+        }
+
+        // New functions to cycle charts
+        function selectNextChart() {
+            if (currentCompanyIndex === -1) return; // No company selected
+            currentChartIndex = (currentChartIndex + 1) % chartTitles.length;
+            updateCharts(companyData[currentCompanyIndex]);
+        }
+
+        function selectPreviousChart() {
+            if (currentCompanyIndex === -1) return; // No company selected
+            currentChartIndex = (currentChartIndex - 1 + chartTitles.length) % chartTitles.length;
+            updateCharts(companyData[currentCompanyIndex]);
+        }
+
+
         // ----- CHARTING -----
         
         function updateCharts(company) {
+            if (!company) return;
+
+            const stockCanvas = document.getElementById('stock-chart');
+            const financialsCanvas = document.getElementById('financials-chart');
+            const chartTitleEl = document.getElementById('chart-title');
+
+            // Update title
+            chartTitleEl.innerText = chartTitles[currentChartIndex];
+
+            if (currentChartIndex === 0) {
+                // Show Stock Chart
+                stockCanvas.style.display = 'block';
+                financialsCanvas.style.display = 'none';
+                drawStockChart(company);
+            } else {
+                // Show Financials Chart
+                stockCanvas.style.display = 'none';
+                financialsCanvas.style.display = 'block';
+                drawFinancialsChart(company);
+            }
+        }
+
+        function drawStockChart(company) {
             const companyFinancials = MOCK_FINANCIAL_DATA[company.Symbol];
             
             if (!companyFinancials) {
@@ -1468,8 +1569,9 @@
             
             // ----- Stock Price Chart (Line) -----
             const stockCtx = document.getElementById('stock-chart').getContext('2d');
-            const labels = companyFinancials.map(d => d.date);
-            const priceData = companyFinancials.map(d => d.price);
+            // Slice data to show only 2005-2025 (240 months)
+            const labels = companyFinancials.map(d => d.date).slice(0, 240);
+            const priceData = companyFinancials.map(d => d.price).slice(0, 240);
             
             if (charts.stock) charts.stock.destroy();
             
@@ -1511,14 +1613,33 @@
             });
 
             // ----- Financials Chart (Bar) -----
-            // Show data for the last 10 years as an example
+            // This section has been removed as requested.
+        }
+
+        function drawFinancialsChart(company) {
+            const companyFinancials = MOCK_FINANCIAL_DATA[company.Symbol];
+            if (!companyFinancials) {
+                console.warn(`No financial data found for ${company.Symbol}`);
+                return;
+            }
+
             const financialsCtx = document.getElementById('financials-chart').getContext('2d');
+            
+            // Show data for the last 10 years as an example
             const annualData = companyFinancials.filter(d => d.date.endsWith('-12')); // Get Dec data for each year
-            const annualLabels = annualData.map(d => d.date.slice(0, 4)).slice(-10); // Last 10 years
+            const annualLabels = annualData.map(d => d.date.slice(0, 4)).slice(-10); // Last 10 years (2021-2030)
             
             const revenueData = annualData.map(d => d.revenue / 1e3).slice(-10); // in Billions
             const earningsData = annualData.map(d => d.earnings / 1e3).slice(-10); // in Billions
             const debtData = annualData.map(d => d.debt / 1e3).slice(-10); // in Billions
+
+            // Define colors for past and future (2025+)
+            const pastColorRevenue = '#39FF14'; // Neon Green
+            const futureColorRevenue = '#AFFF9A'; // Light Neon Green
+            const pastColorEarnings = '#00E5FF'; // Neon Cyan
+            const futureColorEarnings = '#9AFBFF'; // Light Neon Cyan
+            const pastColorDebt = '#FF073A'; // Neon Pink/Red
+            const futureColorDebt = '#FF9AB2'; // Light Neon Pink
             
             if (charts.financials) charts.financials.destroy();
             
@@ -1530,17 +1651,26 @@
                         {
                             label: 'Revenue (Billion USD)',
                             data: revenueData,
-                            backgroundColor: '#39FF14', // Neon Green
+                            backgroundColor: (context) => {
+                                const year = context.chart.data.labels[context.dataIndex];
+                                return parseInt(year) >= 2025 ? futureColorRevenue : pastColorRevenue;
+                            },
                         },
                         {
                             label: 'Earnings (Billion USD)',
                             data: earningsData,
-                            backgroundColor: '#00E5FF', // Neon Cyan
+                            backgroundColor: (context) => {
+                                const year = context.chart.data.labels[context.dataIndex];
+                                return parseInt(year) >= 2025 ? futureColorEarnings : pastColorEarnings;
+                            },
                         },
                         {
                             label: 'Debt (Billion USD)',
                             data: debtData,
-                            backgroundColor: '#FF073A', // Neon Pink/Red
+                            backgroundColor: (context) => {
+                                const year = context.chart.data.labels[context.dataIndex];
+                                return parseInt(year) >= 2025 ? futureColorDebt : pastColorDebt;
+                            },
                         }
                     ]
                 },
@@ -1578,10 +1708,5 @@
     </script>
 </body>
 </html>
-
-
-
-
-
 
 
