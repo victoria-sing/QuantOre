@@ -1,33 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fintech Geo-Risk Analyzer</title>
-    
+    <title>QuantOre</title>
+
+    <!-- NEW: Added Favicon -->
+    <link rel="icon" href="favicon.png">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+    <script src="https://unpkg.com/papaparse@latest/papaparse.min.js"></script>
+
     <!-- Leaflet.js (for maps) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
     <!-- Chart.js (for financial charts) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
-    
+
     <!-- PapaParse (for CSV parsing) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
 
     <style>
         /* Base styles */
-        html, body {
+        html,
+        body {
             height: 100vh;
             width: 100%;
             margin: 0;
             padding: 0;
-            overflow: hidden; /* Prevent scrolling on the body */
+            overflow: hidden;
+            /* Prevent scrolling on the body */
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-            background-color: #111827; /* Dark background */
+            background-color: #262626;
+            /* Dark background */
         }
 
         /* Map container */
@@ -38,17 +48,20 @@
             top: 0;
             left: 0;
             z-index: 10;
-            background-color: #111827; /* Match body/tile background */
+            background-color: #262626;
+            /* Match body/tile background */
         }
 
         /* UI Panels */
         .ui-panel {
             position: absolute;
             z-index: 1001;
-            background-color: rgba(17, 24, 39, 0.85); /* bg-gray-900 with 85% opacity */
+            background-color: rgba(17, 24, 39, 0.85);
+            /* bg-gray-900 with 85% opacity */
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(55, 65, 81, 0.5); /* Refined border */
+            border: 1px solid rgba(55, 65, 81, 0.5);
+            /* Refined border */
             color: white;
             transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
@@ -56,41 +69,57 @@
 
         /* Neon Text Highlight */
         .text-neon-highlight {
-            color: #39FF14; /* Neon Green */
+            color: #39FF14;
+            /* Neon Green */
             text-shadow: 0 0 4px #39FF14, 0 0 8px #39FF14;
         }
 
         /* Left and Right Sidebars */
-        #sidebar-left, #sidebar-right {
-            top: 0;
-            height: 100vh;
-            width: 22rem; /* w-88 */
+        #sidebar-left,
+        #sidebar-right {
+            top: 1rem;
+            /* Changed from 0 */
+            /* height: 100vh; */
+            /* Removed */
+            max-height: calc(100vh - 2rem);
+            /* Added */
+            width: 22rem;
+            /* w-88 */
             max-width: 90%;
             display: flex;
             flex-direction: column;
         }
 
         #sidebar-left {
-            left: 0;
-            border-top-right-radius: 0.75rem; /* rounded-xl */
-            border-bottom-right-radius: 0.75rem; /* rounded-xl */
+            left: 1rem;
+            /* Changed from 0 */
+            border-radius: 0.75rem;
+            /* rounded-xl */
+            /* Made all-sided */
         }
 
         #sidebar-right {
-            right: 0;
-            border-top-left-radius: 0.75rem; /* rounded-xl */
-            border-bottom-left-radius: 0.75rem; /* rounded-xl */
+            right: 1rem;
+            /* Changed from 0 */
+            border-radius: 0.75rem;
+            /* rounded-xl */
+            /* Made all-sided */
         }
 
         /* Hide sidebars on small screens */
         @media (max-width: 1024px) {
             #sidebar-left {
-                transform: translateX(-100%);
+                transform: translateX(calc(-100% - 1rem));
+                /* Adjusted for left: 1rem */
             }
+
             #sidebar-right {
-                transform: translateX(100%);
+                transform: translateX(calc(100% + 1rem));
+                /* Adjusted for right: 1rem */
             }
-            #sidebar-left.open, #sidebar-right.open {
+
+            #sidebar-left.open,
+            #sidebar-right.open {
                 transform: translateX(0);
             }
         }
@@ -100,39 +129,46 @@
             bottom: 0;
             width: 100%;
             height: 40%;
-            border-top-left-radius: 0.75rem; /* rounded-t-xl */
-            border-top-right-radius: 0.75rem; /* rounded-t-xl */
+            border-top-left-radius: 0.75rem;
+            /* rounded-t-xl */
+            border-top-right-radius: 0.75rem;
+            /* rounded-t-xl */
             transform: translateY(100%);
         }
 
         #bottom-panel.open {
             transform: translateY(0);
         }
-        
-        /* Chart wrapper to make Chart.js responsive */
-        .chart-wrapper {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            min-height: 150px; /* Ensure charts are visible */
-        }
 
         /* Custom scrollbar for company list */
+        #company-list {
+            flex-grow: 0;
+            /* Added */
+            max-height: 65vh;
+            /* Added reasonable max-height */
+        }
+
         #company-list::-webkit-scrollbar {
             width: 6px;
         }
+
         #company-list::-webkit-scrollbar-track {
-            background: rgba(55, 65, 81, 0.3); /* bg-gray-700 */
+            background: rgba(55, 65, 81, 0.3);
+            /* bg-gray-700 */
             border-radius: 3px;
         }
+
         #company-list::-webkit-scrollbar-thumb {
-            background: #4B5563; /* bg-gray-600 */
+            background: #4B5563;
+            /* bg-gray-600 */
             border-radius: 3px;
         }
+
         #company-list::-webkit-scrollbar-thumb:hover {
-            background: #6B7280; /* bg-gray-500 */
+            background: #6B7280;
+            /* bg-gray-500 */
         }
-        
+
         /* Loading Spinner */
         #loading-overlay {
             position: absolute;
@@ -148,6 +184,7 @@
             color: white;
             font-size: 1.5rem;
         }
+
         .spinner {
             border: 4px solid rgba(255, 255, 255, 0.3);
             border-top-color: #3498db;
@@ -157,27 +194,35 @@
             animation: spin 1s linear infinite;
             margin-right: 1rem;
         }
+
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
-        
+
         /* Leaflet Popup Customization */
         .leaflet-popup-content-wrapper {
-            background: #1F2937; /* bg-gray-800 */
-            color: #F3F4F6; /* bg-gray-100 */
+            background: #1F2937;
+            /* bg-gray-800 */
+            color: #F3F4F6;
+            /* bg-gray-100 */
             border-radius: 0.5rem;
         }
+
         .leaflet-popup-content {
             margin: 1rem;
         }
+
         .leaflet-popup-tip {
             background: #1F2937;
         }
+
         .leaflet-popup-close-button {
             color: #F3F4F6 !important;
             padding: 4px 4px 0 0 !important;
         }
-        
+
         /* Mobile toggle button */
         #mobile-toggle-btn {
             z-index: 1002;
@@ -185,47 +230,97 @@
             top: 1rem;
             left: 1rem;
         }
-        
+
+        /* New UI Toggle Button */
+        #toggle-ui-btn {
+            z-index: 1002;
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background-color: rgba(17, 24, 39, 0.85);
+            /* bg-gray-900 with 85% opacity */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(55, 65, 81, 0.5);
+            /* Refined border */
+            transition: opacity 0.3s;
+        }
+
+        /* Styles for hiding UI */
+        #sidebar-left.ui-hidden {
+            transform: translateX(calc(-100% - 1rem));
+            /* Adjusted for left: 1rem */
+        }
+
+        #sidebar-right.ui-hidden {
+            transform: translateX(calc(100% + 1rem));
+            /* Adjusted for right: 1rem */
+        }
+
+        #bottom-panel.ui-hidden {
+            transform: translateY(100%);
+        }
+
+        #mobile-toggle-btn.ui-hidden {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
         /* Input styles */
         .dark-input {
-            background-color: rgba(55, 65, 81, 0.7); /* bg-gray-700 */
-            border: 1px solid #4B5563; /* border-gray-600 */
+            background-color: rgba(55, 65, 81, 0.7);
+            /* bg-gray-700 */
+            border: 1px solid #4B5563;
+            /* border-gray-600 */
             color: white;
         }
+
         .dark-input::placeholder {
-            color: #9CA3AF; /* text-gray-400 */
+            color: #9CA3AF;
+            /* text-gray-400 */
         }
+
         .dark-input:focus {
             outline: none;
-            border-color: #39FF14; /* Neon Green */
-            box-shadow: 0 0 0 2px rgba(57, 255, 20, 0.5); /* Neon Green glow */
+            border-color: #39FF14;
+            /* Neon Green */
+            box-shadow: 0 0 0 2px rgba(57, 255, 20, 0.5);
+            /* Neon Green glow */
         }
-        
+
         /* Range slider styles */
         input[type=range] {
             -webkit-appearance: none;
             width: 100%;
             background: transparent;
         }
+
         input[type=range]:focus {
             outline: none;
         }
+
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%;
             height: 4px;
             cursor: pointer;
-            background: #4B5563; /* bg-gray-600 */
+            background: #4B5563;
+            /* bg-gray-600 */
             border-radius: 3px;
         }
+
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
             height: 16px;
             width: 16px;
             border-radius: 50%;
-            background: #39FF14; /* Neon Green */
+            background: #39FF14;
+            /* Neon Green */
             cursor: pointer;
-            margin-top: -6px; /* Center thumb */
+            margin-top: -6px;
+            /* Center thumb */
         }
+
         input[type=range]::-moz-range-track {
             width: 100%;
             height: 4px;
@@ -233,42 +328,70 @@
             background: #4B5563;
             border-radius: 3px;
         }
+
         input[type=range]::-moz-range-thumb {
             height: 16px;
             width: 16px;
             border-radius: 50%;
-            background: #39FF14; /* Neon Green */
+            background: #39FF14;
+            /* Neon Green */
             cursor: pointer;
             border: none;
         }
-        
+
         /* Checkbox styles */
         input[type=checkbox] {
             appearance: none;
             -webkit-appearance: none;
             height: 1.25rem;
             width: 1.25rem;
-            background-color: rgba(55, 65, 81, 0.7); /* bg-gray-700, matches input */
-            border: 1px solid #4B5563; /* border-gray-600, matches input */
+            background-color: rgba(55, 65, 81, 0.7);
+            /* bg-gray-700, matches input */
+            border: 1px solid #4B5563;
+            /* border-gray-600, matches input */
             border-radius: 0.25rem;
             cursor: pointer;
             display: inline-block;
             position: relative;
             transition: background-color 0.2s, border-color 0.2s;
         }
+
         input[type=checkbox]:checked {
-            background-color: #39FF14; /* Neon Green */
-            border-color: #39FF14; /* Neon Green */
+            background-color: #39FF14;
+            /* Neon Green */
+            border-color: #39FF14;
+            /* Neon Green */
             background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='black' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 0 1 0 1.414l-5 5a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L6.5 9.086l4.293-4.293a1 1 0 0 1 1.414 0z'/%3e%3c/svg%3e");
             background-size: 100% 100%;
             background-position: center;
             background-repeat: no-repeat;
         }
-        /* Removed the ::after rule */
 
+        /* UPDATED: Marker Glow Animation REMOVED */
+        /* @keyframes pulse-glow block has been deleted */
+
+        .leaflet-mine-marker.glowing-marker {
+            /* This applies the yellow border color */
+            stroke: #FFFF00 !important;
+            /* Bright Yellow border */
+            stroke-width: 3 !important;
+            /* Make border thicker for highlight */
+            /* animation: ... REMOVED */
+        }
+
+        /* NEW: Add subtle glow to all markers */
+        .leaflet-mine-marker {
+            /* transition: ... REMOVED */
+            /* filter: ... REMOVED */
+        }
+
+        /* .leaflet-mine-marker.glowing-marker { ... } */
+        /* This redundant block has been deleted */
     </style>
 </head>
+
 <body class="bg-gray-900">
+    <script src="data.js"></script>
 
     <!-- The Map -->
     <div id="map"></div>
@@ -285,12 +408,30 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
         </svg>
     </button>
-    
+
+    <!-- New UI Toggle Button -->
+    <button id="toggle-ui-btn" class="p-2 text-white rounded-lg">
+        <svg id="icon-hide" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round"
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+        <svg id="icon-show" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7 1.274-4.057 5.064-7 9.542-7 .847 0 1.67.11 2.458.31M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round"
+                d="M17.593 17.593l-1.414-1.414M1.172 1.172l1.414 1.414m5.21 5.21l-1.414-1.414M17.593 1.172l-1.414 1.414m-5.21 5.21l1.414 1.414M1.172 17.593l1.414-1.414m5.21-5.21l-1.414 1.414" />
+        </svg>
+    </button>
+
     <!-- Left Sidebar (Company List) -->
     <div id="sidebar-left" class="ui-panel p-4">
         <h1 class="text-2xl font-bold mb-4 text-neon-highlight">QuantOre</h1>
         <div class="mb-4">
-            <input type="text" id="search-box" placeholder="Search companies..." class="w-full p-2 rounded-lg dark-input">
+            <input type="text" id="search-box" placeholder="Search companies..."
+                class="w-full p-2 rounded-lg dark-input">
         </div>
         <!-- Company List Container -->
         <div id="company-list" class="flex-grow overflow-y-auto space-y-1 pr-2">
@@ -301,12 +442,12 @@
     <!-- Right Sidebar (Layers & Filters) -->
     <div id="sidebar-right" class="ui-panel p-4">
         <h2 class="text-xl font-semibold mb-6 text-neon-highlight">Layers & Analysis</h2>
-        
+
         <!-- Layer Toggles -->
         <div class="space-y-4 mb-8">
             <label class="flex items-center space-x-3 cursor-pointer">
                 <input type="checkbox" id="toggle-mines" checked>
-                <span class="text-gray-200">Top 50 Mine Sites</span>
+                <span class="text-gray-200">Mining Operations</span>
             </label>
             <label class="flex items-center space-x-3 cursor-pointer">
                 <input type="checkbox" id="toggle-weather">
@@ -336,27 +477,34 @@
         <div class="flex justify-between items-center mb-2">
             <div class="flex items-center gap-3">
                 <button id="prev-company-btn" class="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
                 <h2 id="company-info-header" class="text-xl font-bold text-neon-highlight">Select a Company</h2>
                 <button id="next-company-btn" class="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
                 </button>
             </div>
             <button id="close-panel-btn" class="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
         </div>
-        
+
         <!-- Charts Container -->
-        <div id="charts-container" class="h-[calc(100%-4.5rem)]">
-            <div class="chart-wrapper">
+        <div id="charts-container" class="h-[calc(100%-4.5rem)] relative">
+            <div id="chart-loader">
+                <div class="spinner"></div>
+                <span class="text-sm text-gray-400">Fetching Live Data...</span>
+            </div>
+            <div class="chart-wrapper h-full">
                 <canvas id="stock-chart"></canvas>
                 <canvas id="financials-chart" style="display: none;"></canvas>
             </div>
@@ -364,13 +512,15 @@
         <!-- New Chart Toggle -->
         <div class="flex justify-center items-center gap-4 mt-2">
             <button id="prev-chart-btn" class="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
             </button>
             <span id="chart-title" class="font-semibold text-gray-300 w-32 text-center">Stock Price</span>
             <button id="next-chart-btn" class="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
             </button>
@@ -395,68 +545,15 @@
             stock: null,
             financials: null
         };
+        let isUiHidden = false;
+        let financialsCache = {}; // Cache for financial API calls
 
-        // ----- USER-UPLOADED CSV DATA -----
-        // Content from 'companiesmarketcap.com - Largest mining companies by market cap.csv'
-        const csvData = `
-"Rank","Name","Symbol","marketcap","price (USD)","country"
-"1","BHP Group","BHP","142508982272","55.62","Australia"
-"2","China Shenhua Energy","601088.SS","115684445106","5.96818","China"
-"3","Rio Tinto","RIO","112893132800","70.54","United Kingdom"
-"4","Zijin Mining","601899.SS","110364296070","4.21705","China"
-"5","Southern Copper","SCCO","105048522752","129.34","United States"
-"6","Newmont","NEM","91577753600","83.37","United States"
-"7a","Agnico Eagle Mines","AEM","82057568256","163.35","Canada"
-"8","Ma'aden","1211.SR","66440951671","17.12","Saudi Arabia"
-"9","Grupo México","GMBXF","63875444736","8.2","Mexico"
-"10","Freeport-McMoRan","FCX","59397971968","41.37","United States"
-"11","Barrick Gold","B","55410675712","32.61","Canada"
-"12","Glencore","GLEN.L","55319803623","5.40536","Switzerland"
-"13","Vale","VALE","54269190144","12.42","Brazil"
-"14","CMOC","603993.SS","52564243642","2.11584","China"
-"15","Wheaton Precious Metals","WPM","49899386880","110.15","Canada"
-"16","Fortescue","FMG.AX","46071477141","14.97","Australia"
-"17","Anglo American","AAL.L","45591322049","41.16","United Kingdom"
-"18","Cameco","CCJ","43003056128","98.77","Canada"
-"19","Franco-Nevada","FNV","41029419008","212.87","Canada"
-"20","Bayan Resources","BYAN.JK","40954086400","1.22862","Indonesia"
-"21","Gold Fields","GFI","40393248768","45.14","South Africa"
-"22","Antofagasta","ANTO.L","39316668749","39.88","United Kingdom"
-"23","Polyus","PLZL.ME","38965935811","28.46","Russia"
-"24","AngloGold Ashanti","AU","38760972288","76.79","South Africa"
-"25","Kinross Gold","KGC","32679233536","26.82","Canada"
-"26","Nutrien","NTR","31649297984","65.15","Canada"
-"27","Coal India","COALINDIA.NS","30978938165","4.98971","India"
-"28","China Northern Rare Earth (CNREHT)","600111.SS","29099499314","8.04652","China"
-"29","Nornickel","GMKN.ME","26903678077","1.85404","Russia"
-"30","Shandong Gold Mining","600547.SS","25841022137","5.71184","China"
-"31","China Coal Energy Company Limited","601898.SS","25692015243","2.08846","China"
-"32","Northern Star","NST.AX","24722521949","17.29","Australia"
-"33","Vedanta","VEDL.NS","24683058864","6.3262","India"
-"34","Fresnillo","FNLPF","24075587584","32.66","Mexico"
-"35","Teck Resources","TECK","23229671424","47.61","Canada"
-"36","Yankuang Energy (Yanzhou Coal Mining)","600188.SS","20366838038","2.35338","China"
-"37","First Quantum Minerals","FM.TO","20230230016","24.26","Canada"
-"38","Ganfeng Lithium","002460.SZ","19263155160","10.11","China"
-"39","Zhejiang Huayou Cobalt","603799.SS","18805626359","10.01","China"
-"40","Lundin Gold","LUG.TO","18478446592","76.54","Canada"
-"41","Industrias Peñoles","PE&OLES.MX","17743906326","44.64","Mexico"
-"42","Royal Gold","RGLD","17246543872","204.37","United States"
-"43","Zhongjin Gold","600489.SS","17231454652","3.5152","China"
-"44","Kazatomprom","0ZQ.F","17208362623","57.31","Kazakhstan"
-"45","Pan American Silver","PAAS","17173827584","40.72","Canada"
-"46","Ivanhoe Mines","IVN.TO","16830726144","12.66","Canada"
-"47","Evolution Mining","EVN.AX","15545224357","7.66236","Australia"
-"48","Zhaojin Mining Industry Company","1818.HK","15000000000","4.1884","China"
-"49","Alamos Gold","AGI","14856015872","35.34","Canada"
-"50","Metso","METSO.HE","14798679059","17.81","Finland"
-`.trim();
+        // API Key
+        const ALPHA_VANTAGE_API_KEY = '9BYTM0MFLXJ0UVN8';
+        //N0O5FGQ1PC79KYM0 Old
+        //New for demo 9VNS35SEQKFF2BRB
+        //For use now 9BYTM0MFLXJ0UVN8
 
-        
-        // ----- MOCK DATA GENERATION (FOR 10,000+ LINE REQUIREMENT) -----
-        // These functions generate massive data objects to simulate API responses.
-        // This is the core of meeting the 10,000+ line requirement.
-        
         /**
          * Generates a massive mock financial dataset for 50 companies over 20 years.
          * This function's return value is > 12,000 lines long.
@@ -465,35 +562,19 @@
             const data = {};
             const startDate = new Date('2005-01-01');
             // const endDate = new Date('2025-01-01'); // Unused variable
-            
+
             // Helper to add months
             function addMonths(date, months) {
                 const d = new Date(date);
                 d.setMonth(d.getMonth() + months);
                 return d;
             }
-            
+
             // Helper to format date as YYYY-MM
             function formatDate(date) {
                 return date.toISOString().slice(0, 7);
             }
-            
-            // Helper to generate a random trend value - This function is not called
-            // function generateRandomWalk(initial, volatility, trend, length) {
-            //     let value = initial;
-            //     const series = [];
-            //     for (let i = 0; i < length; i++) {
-            //         value += (Math.random() - 0.49) * volatility + trend;
-            //         if (value < 0) value = 0;
-            //         series.push(parseFloat(value.toFixed(2)));
-            //     }
-            //     return series;
-            // }
 
-            // const companySymbols = companies.map(c => c.Symbol); // Unused variable
-            
-            // This return statement and its object literal content
-            // constitutes over 12,000 lines of code.
             return {
                 "BHP": Array.from({ length: 312 }, (_, i) => {
                     const date = addMonths(startDate, i);
@@ -1047,156 +1128,101 @@
                 })
             };
         }
-        
-        /**
-         * Generates a massive mock GeoJSON dataset for mine locations.
-         * This function's return value is > 1,500 lines long.
-         */
-        function generateRealisticMineLocations(companies) {
-            const features = [];
-            
-            // Helper function to get random coordinates within a box
-            // [minLng, minLat, maxLng, maxLat]
-            const regions = {
-                'Australia': [-143.0, -43.0, -113.0, -10.0],
-                'China': [73.0, 18.0, 135.0, 54.0],
-                'United Kingdom': [-8.0, 49.0, 2.0, 61.0],
-                'United States': [-125.0, 24.0, -66.0, 49.0],
-                'Canada': [-141.0, 41.0, -52.0, 83.0],
-                'Saudi Arabia': [34.0, 16.0, 56.0, 32.0],
-                'Mexico': [-118.0, 14.0, -86.0, 33.0],
-                'Switzerland': [5.0, 45.0, 11.0, 48.0],
-                'Brazil': [-74.0, -34.0, -34.0, 6.0],
-                'Indonesia': [95.0, -11.0, 141.0, 6.0],
-                'South Africa': [16.0, -35.0, 33.0, -22.0],
-                'Russia': [30.0, 41.0, 180.0, 82.0],
-                'India': [68.0, 8.0, 98.0, 37.0],
-                'Kazakhstan': [46.0, 40.0, 88.0, 56.0],
-                'Finland': [20.0, 59.0, 32.0, 70.0],
-                'Peru': [-81.0, -18.0, -68.0, 0.0],
-                'Chile': [-76.0, -56.0, -66.0, -17.0],
-                'DRC': [12.0, -14.0, 32.0, 5.0],
-                'Argentina': [-74.0, -55.0, -53.0, -21.0]
-            };
-            
-            // Plausible commodity list
-            const commodities = ['Gold', 'Copper', 'Iron Ore', 'Lithium', 'Coal', 'Bauxite', 'Silver', 'Zinc', 'Platinum', 'Nickel', 'Uranium', 'Cobalt'];
 
-            function getRandomCoords(regionBox) {
-                const [minLng, minLat, maxLng, maxLat] = regionBox;
-                const lng = Math.random() * (maxLng - minLng) + minLng;
-                const lat = Math.random() * (maxLat - minLat) + minLat;
-                return [lng, lat];
-            }
-            
-            // Plausible regions based on company HQ / known operations
-            const companyRegions = {
-                'BHP': ['Australia', 'Chile', 'United States', 'Canada'],
-                '601088.SS': ['China'],
-                'RIO': ['Australia', 'Canada', 'United States', 'South Africa'],
-                '601899.SS': ['China', 'DRC', 'Peru', 'Russia'],
-                'SCCO': ['Peru', 'Mexico', 'United States'],
-                'NEM': ['United States', 'Canada', 'Australia', 'Argentina'],
-                'AEM': ['Canada', 'Finland', 'Mexico'],
-                '1211.SR': ['Saudi Arabia'],
-                'GMBXF': ['Mexico', 'Peru', 'United States'],
-                'FCX': ['United States', 'Indonesia', 'Peru'],
-                'B': ['Canada', 'United States', 'Argentina'],
-                'GLEN.L': ['Australia', 'DRC', 'Canada', 'South Africa'],
-                'VALE': ['Brazil', 'Canada', 'Indonesia'],
-                '603993.SS': ['China', 'DRC', 'Australia'],
-                'WPM': ['Canada', 'Mexico', 'Peru'],
-                'FMG.AX': ['Australia'],
-                'AAL.L': ['South Africa', 'Brazil', 'Chile', 'Australia'],
-                'CCJ': ['Canada', 'Kazakhstan', 'United States'],
-                'FNV': ['Canada', 'United States', 'Mexico'],
-                'BYAN.JK': ['Indonesia'],
-                'GFI': ['South Africa', 'Australia', 'Peru'],
-                'ANTO.L': ['Chile'],
-                'PLZL.ME': ['Russia'],
-                'AU': ['South Africa', 'Argentina', 'Australia'],
-                'KGC': ['Canada', 'United States', 'Brazil', 'Russia'],
-                'NTR': ['Canada', 'United States'],
-                'COALINDIA.NS': ['India'],
-                '600111.SS': ['China'],
-                'GMKN.ME': ['Russia'],
-                '600547.SS': ['China'],
-                '601898.SS': ['China'],
-                'NST.AX': ['Australia', 'Canada'],
-                'VEDL.NS': ['India', 'South Africa'],
-                'FNLPF': ['Mexico'],
-                'TECK': ['Canada', 'United States', 'Chile'],
-                '600188.SS': ['China', 'Australia'],
-                'FM.TO': ['Canada', 'Zambia', 'Panama'], // Zambia/Panama not in regions, will default
-                '002460.SZ': ['China', 'Argentina'],
-                '603799.SS': ['China', 'DRC'],
-                'LUG.TO': ['Ecuador'], // Ecuador not in regions, will default
-                'PE&OLES.MX': ['Mexico'],
-                'RGLD': ['United States', 'Canada', 'Mexico'],
-                '600489.SS': ['China'],
-                '0ZQ.F': ['Kazakhstan'],
-                'PAAS': ['Canada', 'Mexico', 'Peru', 'Argentina'],
-                'IVN.TO': ['DRC', 'South Africa'],
-                'EVN.AX': ['Australia', 'Canada'],
-                '1818.HK': ['China'],
-                'AGI': ['Canada', 'United States', 'Mexico'],
-                'METSO.HE': ['Finland'] // HQ, not a mine, but representative
-            };
+        // ----- NEW REAL DATA PARSING -----
 
-            companies.forEach((company, index) => {
-                const plausibleRegions = companyRegions[company.Symbol] || [company.country] || ['Australia'];
-                const numMines = Math.floor(Math.random() * 5) + 3; // 3-7 mines per company
-                
-                for (let i = 0; i < numMines; i++) {
-                    const regionName = plausibleRegions[i % plausibleRegions.length];
-                    const regionBox = regions[regionName] || regions['Australia'];
-                    const coords = getRandomCoords(regionBox);
-                    
-                    // Generate commodities
-                    const primary = commodities[Math.floor(Math.random() * commodities.length)];
-                    let secondary = commodities[Math.floor(Math.random() * commodities.length)];
-                    while (secondary === primary) {
-                        secondary = commodities[Math.floor(Math.random() * commodities.length)];
-                    }
-                    if (Math.random() > 0.7) secondary = 'N/A'; // 30% chance of no secondary
+        // Helper to parse coordinates like "119.75° E" or "-22.55° S"
+        function parseCoordinates(lngStr, latStr) {
+            // Use Math.abs(parseFloat(...)) to ignore existing negative signs
+            // which might be used inconsistently with S/W designators
+            const lngVal = Math.abs(parseFloat(lngStr));
+            const latVal = Math.abs(parseFloat(latStr));
 
-                    features.push({
-                        type: "Feature",
-                        geometry: {
-                            type: "Point",
-                            coordinates: coords
-                        },
-                        properties: {
-                            rank: company.Rank,
-                            name: `${company.Name} - Site ${String.fromCharCode(65 + i)}`,
-                            companyName: company.Name,
-                            companySymbol: company.Symbol,
-                            country: company.country,
-                            marketcap: company.marketcap,
-                            primaryCommodity: primary,
-                            secondaryCommodity: secondary
-                        }
-                    });
-                }
-            });
-            
-            // This return statement and its object literal content
-            // constitutes over 1,500 lines of code.
-            return {
-                type: "FeatureCollection",
-                features: features
-            };
+            // Apply sign based on N/S/E/W
+            const lng = lngStr.includes('W') ? -lngVal : lngVal;
+            const lat = latStr.includes('S') ? -latVal : latVal;
+
+            return [lng, lat];
         }
-        
-        // ----- END MOCK DATA GENERATION -----
+
+        /**
+         * Parses the new mining sites CSV and converts it to GeoJSON
+         */
+        function parseAndProcessMineData(csvData, top50Companies) {
+            const parsed = Papa.parse(csvData.trim(), { header: true, skipEmptyLines: true });
+            const features = [];
+            let currentCompany = null;
+            let currentRank = null;
+
+            // Create a lookup map to find a symbol by company name
+            const companySymbolMap = new Map();
+            top50Companies.forEach(c => {
+                companySymbolMap.set(c.Name, c.Symbol);
+            });
+            // Add known aliases
+            companySymbolMap.set('Fortescue', 'FMG.AX');
+            companySymbolMap.set('Barrick Gold', 'B'); // 'B' is not unique, 'GOLD' is better but CSV uses 'B'
+            companySymbolMap.set('Glencore', 'GLEN.L');
+            companySymbolMap.set('Anglo American', 'AAL.L');
+
+            parsed.data.forEach(row => {
+                // Handle "carry-down" logic for merged cells
+                if (row.Company && row.Company.trim()) {
+                    currentCompany = row.Company.trim();
+                }
+                if (row.Rank && row.Rank.trim()) {
+                    currentRank = row.Rank.trim();
+                }
+
+                // Skip rows without coordinates
+                if (!row.Longitude || !row.Latitude || !currentCompany) return;
+
+                // Skip "See Other" rows
+                if (row['Site Name'].startsWith('See ')) return;
+
+                const [lng, lat] = parseCoordinates(row.Longitude, row.Latitude);
+
+                // Skip if coordinates are invalid
+                if (isNaN(lng) || isNaN(lat)) {
+                    console.warn('Skipping row with invalid coordinates:', row);
+                    return;
+                }
+
+                // Find the matching company symbol from the Top 50 list
+                const companySymbol = companySymbolMap.get(currentCompany) || null;
+
+                // Determine primary commodity for coloring
+                const primaryCommodity = row.Commondity.split(/[,-]/)[0].trim();
+
+                features.push({
+                    type: "Feature",
+                    geometry: {
+                        type: "Point",
+                        coordinates: [lng, lat]
+                    },
+                    properties: {
+                        rank: currentRank,
+                        siteName: row['Site Name'],
+                        companyName: currentCompany,
+                        companySymbol: companySymbol,
+                        commodity: row.Commondity,
+                        primaryCommodity: primaryCommodity,
+                        lat: lat,
+                        lng: lng
+                    }
+                });
+            });
+
+            return { type: "FeatureCollection", features: features };
+        }
 
 
         // ----- MOCK DATA ASSIGNMENT -----
         // We call the generator functions to get the massive data objects.
         let MOCK_FINANCIAL_DATA = {};
         let MOCK_MINE_GEOJSON = {};
-        
-        
+
+
         // ----- INITIALIZATION -----
         document.addEventListener('DOMContentLoaded', initApp);
 
@@ -1208,30 +1234,30 @@
                     skipEmptyLines: true
                 });
                 companyData = parsed.data.slice(0, 50); // Get top 50
-                
-                // 2. Generate the massive mock datasets
-                // This is the most intensive part
+
+                // 2. Generate the massive mock financial datasets
                 MOCK_FINANCIAL_DATA = generateMockFinancialData(companyData);
-                MOCK_MINE_GEOJSON = generateRealisticMineLocations(companyData);
+
+                // 3. Load and parse the REAL mine data
+                MOCK_MINE_GEOJSON = parseAndProcessMineData(miningSitesCsvData, companyData);
 
             } catch (error) {
-                console.error("Error loading company data:", error);
-                document.getElementById('loading-overlay').innerText = "Error loading data. Please reload.";
+                console.error("Error loading data:", error);
                 return;
             }
-            
+
             // 3. Initialize the map
             initMap();
-            
+
             // 4. Populate UI elements
             populateCompanyList();
-            
+
             // 5. Add map layers
             addMineLayer();
-            
+
             // 6. Setup all event listeners
             setupEventListeners();
-            
+
             // 7. Hide loading overlay
             document.getElementById('loading-overlay').style.display = 'none';
         }
@@ -1249,7 +1275,7 @@
                     })
                 ]
             });
-            
+
             // Custom zoom control position
             map.zoomControl.setPosition('bottomright');
         }
@@ -1259,7 +1285,7 @@
         function populateCompanyList() {
             const listContainer = document.getElementById('company-list');
             listContainer.innerHTML = ''; // Clear existing
-            
+
             companyData.forEach((company, index) => {
                 const item = document.createElement('div');
                 item.className = 'p-3 rounded-lg hover:bg-gray-800/70 cursor-pointer transition-colors'; // Changed hover to bg-gray-800
@@ -1274,11 +1300,11 @@
                 listContainer.appendChild(item);
             });
         }
-        
+
         function filterCompanyList() {
             const searchTerm = document.getElementById('search-box').value.toLowerCase();
             const items = document.getElementById('company-list').children;
-            
+
             Array.from(items).forEach(item => {
                 const text = item.innerText.toLowerCase();
                 if (text.includes(searchTerm)) {
@@ -1288,61 +1314,65 @@
                 }
             });
         }
-        
+
         // ----- MAP LAYERS -----
-        
+
         function addMineLayer() {
             if (mineLayer && map.hasLayer(mineLayer)) {
                 map.removeLayer(mineLayer);
             }
-            
+
             // Reset markers map
             companyMarkers = {};
 
             mineLayer = L.geoJSON(MOCK_MINE_GEOJSON, {
                 pointToLayer: (feature, latlng) => {
+                    const primary = feature.properties.primaryCommodity;
+                    const color = commodityColors[primary] || commodityColors['default'];
+
                     const marker = L.circleMarker(latlng, {
                         radius: 6,
-                        fillColor: "#39FF14", // Neon Green
-                        color: "#E5E7EB", // gray-200
-                        weight: 1,
+                        fillColor: color,
+                        color: color, // Match fill color (removes white border)
+                        weight: 1,    // 1px border so it looks solid
                         opacity: 1,
-                        fillOpacity: 0.8
+                        fillOpacity: 0.9, // Make fill slightly more vibrant
+                        className: 'leaflet-mine-marker' // Add class for CSS targeting
                     });
-                    
+
                     // Store marker by company symbol
                     const symbol = feature.properties.companySymbol;
                     if (!companyMarkers[symbol]) {
                         companyMarkers[symbol] = [];
                     }
                     companyMarkers[symbol].push(marker);
-                    
+
                     return marker;
                 },
                 onEachFeature: (feature, layer) => {
                     // Create popup content
                     const props = feature.properties;
+                    const primaryColor = commodityColors[props.primaryCommodity] || commodityColors['default'];
+
                     const popupContent = `
-                        <div class="text-base font-bold">${props.name}</div>
-                        <div class="text-sm">Company: ${props.companyName} (${props.companySymbol})</div>
-                        <div class="text-sm">Country: ${props.country}</div>
-                        <div class="text-sm mt-2">Primary: <span class="font-semibold text-neon-highlight">${props.primaryCommodity}</span></div>
-                        <div class="text-sm">Secondary: <span class="font-semibold text-gray-300">${props.secondaryCommodity}</span></div>
-                        <div class="text-xs text-gray-400 mt-2">Market Cap: $${(props.marketcap / 1e9).toFixed(2)}B</div>
+                        <div class="text-base font-bold">${props.siteName}</div>
+                        <div class="text-sm">Company: ${props.companyName}</div>
+                        <div class="text-sm mt-2">Commodities: <span class="font-semibold" style="color: ${primaryColor}">${props.commodity}</span></div>
+                        <div class="text-xs text-gray-400 mt-2">Coords: ${props.lat.toFixed(4)}, ${props.lng.toFixed(4)}</div>
                     `;
                     layer.bindPopup(popupContent);
-                    
+
                     // Add click event to select company
                     layer.on('click', () => {
                         const index = companyData.findIndex(c => c.Symbol === props.companySymbol);
-                        if(index > -1) onCompanySelect(index);
+                        if (index > -1) onCompanySelect(index);
                     });
                 }
             });
-            
+
             mineLayer.addTo(map);
         }
-        
+
         function toggleWeatherLayer() {
             const isChecked = document.getElementById('toggle-weather').checked;
             if (isChecked) {
@@ -1356,11 +1386,11 @@
                 map.removeLayer(weatherLayer);
             }
         }
-        
+
         function toggleDisasterLayer() {
             updateDisasterLayer();
         }
-        
+
         function toggleTargetedRiskLayer() {
             updateDisasterLayer();
         }
@@ -1373,7 +1403,7 @@
             // Clear existing layers
             if (disasterLayer) map.removeLayer(disasterLayer);
             if (targetedRiskLayer) map.removeLayer(targetedRiskLayer);
-            
+
             disasterLayer = L.layerGroup();
             targetedRiskLayer = L.layerGroup();
 
@@ -1391,12 +1421,12 @@
                         fillOpacity: 0.3,
                         weight: 1
                     })
-                    .bindPopup(`Simulated Climate Risk Zone<br>Year: ${year}`)
-                    .addTo(disasterLayer);
+                        .bindPopup(`Simulated Climate Risk Zone<br>Year: ${year}`)
+                        .addTo(disasterLayer);
                 }
                 disasterLayer.addTo(map);
             }
-            
+
             // SIMULATION: Generate "targeted" risks around the mines
             if (targetedChecked) {
                 MOCK_MINE_GEOJSON.features.forEach(feature => {
@@ -1412,8 +1442,8 @@
                             fillOpacity: 0.4,
                             weight: 1
                         })
-                        .bindPopup(`High Climate Risk Alert<br>Site: ${feature.properties.name}<br>Year: ${year}`)
-                        .addTo(targetedRiskLayer);
+                            .bindPopup(`High Climate Risk Alert<br>Site: ${feature.properties.name}<br>Year: ${year}`)
+                            .addTo(targetedRiskLayer);
                     }
                 });
                 targetedRiskLayer.addTo(map);
@@ -1421,11 +1451,11 @@
         }
 
         // ----- EVENT LISTENERS -----
-        
+
         function setupEventListeners() {
             // Search Box
             document.getElementById('search-box').addEventListener('input', filterCompanyList);
-            
+
             // Layer Toggles
             document.getElementById('toggle-mines').addEventListener('change', () => {
                 document.getElementById('toggle-mines').checked ? addMineLayer() : map.removeLayer(mineLayer);
@@ -1444,12 +1474,12 @@
                 // Update risk layers when slider value is confirmed
                 updateDisasterLayer();
             });
-            
+
             // Bottom Panel Close
             document.getElementById('close-panel-btn').addEventListener('click', () => {
                 document.getElementById('bottom-panel').classList.remove('open');
             });
-            
+
             // Chart navigation (Company)
             document.getElementById('prev-company-btn').addEventListener('click', selectPreviousCompany);
             document.getElementById('next-company-btn').addEventListener('click', selectNextCompany);
@@ -1463,11 +1493,14 @@
                 document.getElementById('sidebar-left').classList.toggle('open');
                 document.getElementById('sidebar-right').classList.toggle('open');
             });
+
+            // New UI Toggle
+            document.getElementById('toggle-ui-btn').addEventListener('click', toggleUiVisibility);
         }
-        
+
         // ----- CORE INTERACTIONS -----
 
-        function onCompanySelect(index) {
+        async function onCompanySelect(index) {
             currentCompanyIndex = index;
             const company = companyData[index];
             if (!company) return;
@@ -1477,66 +1510,233 @@
             // 1. Update bottom panel
             document.getElementById('company-info-header').innerText = `${company.Name} (${company.Symbol})`;
             document.getElementById('bottom-panel').classList.add('open');
-            
-            // 2. Update charts
-            updateCharts(company);
-            
+
+            // 2. Update charts - NOW WITH LIVE DATA FALLBACK
+            let realStockData = null;
+            try {
+                showChartLoading(true);
+                realStockData = await fetchRealStockData(company.Symbol);
+                // If API call was successful, realStockData will be populated
+            } catch (error) {
+                console.warn(`Live API call failed for ${company.Symbol}. Using mock data. Error:`, error.message);
+                // realStockData remains null, app will use mock data
+            } finally {
+                showChartLoading(false);
+                updateCharts(company, realStockData); // Pass real data (or null) to chart renderer
+            }
+
             // 3. Highlight and fly to map markers
             if (companyMarkers[company.Symbol]) {
                 const group = L.featureGroup(companyMarkers[company.Symbol]);
                 map.flyToBounds(group.getBounds().pad(0.5), { duration: 1.0 });
-                
+
                 // Highlight selected markers
                 companyMarkers[company.Symbol].forEach(marker => {
-                    marker.setStyle({ fillColor: '#00E5FF', radius: 10 }); // Neon Cyan
+                    // Apply style...
+                    marker.setStyle({ radius: 6, weight: 2 }); // Highlight: SAME size, heavier border
+                    // ...and add glow class
+                    marker.getElement().classList.add('glowing-marker');
                 });
-                
+
                 // Reset other markers
                 Object.keys(companyMarkers).forEach(symbol => {
                     if (symbol !== company.Symbol) {
                         companyMarkers[symbol].forEach(marker => {
-                             marker.setStyle({ fillColor: '#39FF14', radius: 6 }); // Neon Green
+                            // Reset style...
+                            const primary = marker.feature.properties.primaryCommodity;
+                            const color = commodityColors[primary] || commodityColors['default'];
+                            marker.setStyle({
+                                radius: 6,
+                                color: color,
+                                weight: 1
+                            }); // Reset to original (no white border)
+                            // ...and remove glow class
+                            marker.getElement().classList.remove('glowing-marker');
                         });
                     }
                 });
             }
-            
+
             // 4. Close sidebars on mobile if they are open
-            if(window.innerWidth < 1024) {
-                 document.getElementById('sidebar-left').classList.remove('open');
-                 document.getElementById('sidebar-right').classList.remove('open');
+            if (window.innerWidth < 1024) {
+                document.getElementById('sidebar-left').classList.remove('open');
+                document.getElementById('sidebar-right').classList.remove('open');
             }
         }
-        
-        function selectNextCompany() {
-            if (currentCompanyIndex === -1) return; // No company selected yet
-            const nextIndex = (currentCompanyIndex + 1) % companyData.length;
-            onCompanySelect(nextIndex);
+
+        function toggleUiVisibility() {
+            isUiHidden = !isUiHidden;
+
+            // Toggle panels
+            document.getElementById('sidebar-left').classList.toggle('ui-hidden', isUiHidden);
+            document.getElementById('sidebar-right').classList.toggle('ui-hidden', isUiHidden);
+            document.getElementById('bottom-panel').classList.toggle('ui-hidden', isUiHidden);
+
+            // Hide mobile button as well
+            document.getElementById('mobile-toggle-btn').classList.toggle('ui-hidden', isUiHidden);
+
+            // Toggle icons
+            document.getElementById('icon-hide').classList.toggle('hidden', isUiHidden);
+            document.getElementById('icon-show').classList.toggle('hidden', !isUiHidden);
         }
 
-        function selectPreviousCompany() {
+        async function selectNextCompany() {
+            if (currentCompanyIndex === -1) return; // No company selected yet
+            const nextIndex = (currentCompanyIndex + 1) % companyData.length;
+            await onCompanySelect(nextIndex); // Now async
+        }
+
+        async function selectPreviousCompany() {
             if (currentCompanyIndex === -1) return; // No company selected yet
             const prevIndex = (currentCompanyIndex - 1 + companyData.length) % companyData.length;
-            onCompanySelect(prevIndex);
+            await onCompanySelect(prevIndex); // Now async
         }
 
         // New functions to cycle charts
-        function selectNextChart() {
+        async function selectNextChart() {
             if (currentCompanyIndex === -1) return; // No company selected
             currentChartIndex = (currentChartIndex + 1) % chartTitles.length;
-            updateCharts(companyData[currentCompanyIndex]);
+            await updateCharts(companyData[currentCompanyIndex]);
         }
 
-        function selectPreviousChart() {
+        async function selectPreviousChart() {
             if (currentCompanyIndex === -1) return; // No company selected
             currentChartIndex = (currentChartIndex - 1 + chartTitles.length) % chartTitles.length;
-            updateCharts(companyData[currentCompanyIndex]);
+            await updateCharts(companyData[currentCompanyIndex]);
         }
 
 
         // ----- CHARTING -----
-        
-        function updateCharts(company) {
+
+        // ----- CHARTING -----
+
+        /**
+         * Fetches REAL stock data from Alpha Vantage.
+         * This will likely fail due to CORS or rate limiting, hence the try/catch in onCompanySelect.
+         */
+        async function fetchRealStockData(symbol) {
+            // Handle symbols with exchange suffixes (e.g., "601088.SS" -> "601088.SHA")
+            let apiSymbol = symbol;
+            if (symbol.endsWith('.SS')) {
+                apiSymbol = symbol.replace('.SS', '.SHA'); // Shanghai
+            } else if (symbol.endsWith('.L')) {
+                apiSymbol = symbol.replace('.L', '.LON'); // London
+            } else if (symbol.endsWith('.AX')) {
+                apiSymbol = symbol.replace('.AX', '.AUS'); // Australia
+            } else if (symbol.endsWith('.TO')) {
+                apiSymbol = symbol.replace('.TO', '.TRT'); // Toronto
+            } else if (symbol.endsWith('.JK')) {
+                apiSymbol = symbol.replace('.JK', '.JAK'); // Jakarta
+            } else if (symbol.endsWith('.NS')) {
+                apiSymbol = symbol.replace('.NS', '.BOM'); // Bombay
+            } else if (symbol.endsWith('.ME')) {
+                apiSymbol = symbol.replace('.ME', '.MCX'); // Moscow
+            } else if (symbol.endsWith('.SZ')) {
+                apiSymbol = symbol.replace('.SZ', '.SHE'); // Shenzhen
+            } else if (symbol.endsWith('.SR')) {
+                apiSymbol = symbol.replace('.SR', '.SAU'); // Saudi
+            } else if (symbol.endsWith('.HK')) {
+                apiSymbol = symbol.replace('.HK', '.HKG'); // Hong Kong
+            } else if (symbol.endsWith('.HE')) {
+                apiSymbol = symbol.replace('.HE', '.HEL'); // Helsinki
+            }
+            // .V, .F, .MX are often problematic or require different handling, but we try
+
+            const url = `https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol=${apiSymbol}&apikey=${ALPHA_VANTAGE_API_KEY}`;
+
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data["Note"] || data["Error Message"]) {
+                throw new Error(data["Note"] || data["Error Message"]);
+            }
+
+            const timeSeriesData = data["Monthly Adjusted Time Series"];
+            if (!timeSeriesData) {
+                throw new Error('Invalid API response structure or symbol not found.');
+            }
+
+            const allLabels = Object.keys(timeSeriesData).reverse(); // Oldest first
+            const allPriceData = allLabels.map(label => parseFloat(timeSeriesData[label]["5. adjusted close"]));
+
+            // Filter for 2005-2025
+            const labels = [];
+            const priceData = [];
+            for (let i = 0; i < allLabels.length; i++) {
+                if (allLabels[i] >= '2005-01-01' && allLabels[i] <= '2025-12-31') {
+                    labels.push(allLabels[i].slice(0, 7)); // 'YYYY-MM' format
+                    priceData.push(allPriceData[i]);
+                }
+            }
+
+            return { labels, priceData };
+        }
+
+        /**
+         * Fetches REAL Income Statement data (annual) from Alpha Vantage.
+         */
+        async function fetchIncomeStatement(symbol) {
+            let apiSymbol = symbol;
+            // (Symbol conversion logic - same as fetchRealStockData)
+            if (symbol.endsWith('.SS')) { apiSymbol = symbol.replace('.SS', '.SHA'); }
+            else if (symbol.endsWith('.L')) { apiSymbol = symbol.replace('.L', '.LON'); }
+            else if (symbol.endsWith('.AX')) { apiSymbol = symbol.replace('.AX', '.AUS'); }
+            else if (symbol.endsWith('.TO')) { apiSymbol = symbol.replace('.TO', '.TRT'); }
+            else if (symbol.endsWith('.JK')) { apiSymbol = symbol.replace('.JK', '.JAK'); }
+            else if (symbol.endsWith('.NS')) { apiSymbol = symbol.replace('.NS', '.BOM'); }
+            else if (symbol.endsWith('.ME')) { apiSymbol = symbol.replace('.ME', '.MCX'); }
+            else if (symbol.endsWith('.SZ')) { apiSymbol = symbol.replace('.SZ', '.SHE'); }
+            else if (symbol.endsWith('.SR')) { apiSymbol = symbol.replace('.SR', '.SAU'); }
+            else if (symbol.endsWith('.HK')) { apiSymbol = symbol.replace('.HK', '.HKG'); }
+            else if (symbol.endsWith('.HE')) { apiSymbol = symbol.replace('.HE', '.HEL'); }
+
+            const url = `https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol=${apiSymbol}&apikey=${ALPHA_VANTAGE_API_KEY}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            if (data["Note"] || data["Error Message"]) throw new Error(data["Note"] || data["Error Message"]);
+            if (!data.annualReports) throw new Error('Invalid API response for Income Statement.');
+            return data.annualReports;
+        }
+
+        /**
+         * Fetches REAL Balance Sheet data (annual) from Alpha Vantage.
+         */
+        async function fetchBalanceSheet(symbol) {
+            let apiSymbol = symbol;
+            // (Symbol conversion logic - same as fetchRealStockData)
+            if (symbol.endsWith('.SS')) { apiSymbol = symbol.replace('.SS', '.SHA'); }
+            else if (symbol.endsWith('.L')) { apiSymbol = symbol.replace('.L', '.LON'); }
+            else if (symbol.endsWith('.AX')) { apiSymbol = symbol.replace('.AX', '.AUS'); }
+            else if (symbol.endsWith('.TO')) { apiSymbol = symbol.replace('.TO', '.TRT'); }
+            else if (symbol.endsWith('.JK')) { apiSymbol = symbol.replace('.JK', '.JAK'); }
+            else if (symbol.endsWith('.NS')) { apiSymbol = symbol.replace('.NS', '.BOM'); }
+            else if (symbol.endsWith('.ME')) { apiSymbol = symbol.replace('.ME', '.MCX'); }
+            else if (symbol.endsWith('.SZ')) { apiSymbol = symbol.replace('.SZ', '.SHE'); }
+            else if (symbol.endsWith('.SR')) { apiSymbol = symbol.replace('.SR', '.SAU'); }
+            else if (symbol.endsWith('.HK')) { apiSymbol = symbol.replace('.HK', '.HKG'); }
+            else if (symbol.endsWith('.HE')) { apiSymbol = symbol.replace('.HE', '.HEL'); }
+
+            const url = `https://www.alphavantage.co/query?function=BALANCE_SHEET&symbol=${apiSymbol}&apikey=${ALPHA_VANTAGE_API_KEY}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            if (data["Note"] || data["Error Message"]) throw new Error(data["Note"] || data["Error Message"]);
+            if (!data.annualReports) throw new Error('Invalid API response for Balance Sheet.');
+            return data.annualReports;
+        }
+
+        function showChartLoading(isLoading) {
+            document.getElementById('chart-loader').style.display = isLoading ? 'flex' : 'none';
+            document.getElementById('stock-chart').style.opacity = isLoading ? '0.2' : '1';
+            document.getElementById('financials-chart').style.opacity = isLoading ? '0.2' : '1';
+        }
+
+        async function updateCharts(company) {
             if (!company) return;
 
             const stockCanvas = document.getElementById('stock-chart');
@@ -1550,37 +1750,88 @@
                 // Show Stock Chart
                 stockCanvas.style.display = 'block';
                 financialsCanvas.style.display = 'none';
-                drawStockChart(company);
+
+                // --- FETCH LIVE DATA EVERY TIME ---
+                let realStockData = null;
+                try {
+                    showChartLoading(true);
+                    realStockData = await fetchRealStockData(company.Symbol);
+                } catch (error) {
+                    console.warn(`Live API call failed for ${company.Symbol}. Using mock data. Error:`, error.message);
+                } finally {
+                    showChartLoading(false);
+                    drawStockChart(company, realStockData); // Pass real data (or null) to chart renderer
+                }
+                // --- END FETCH ---
+
             } else {
                 // Show Financials Chart
                 stockCanvas.style.display = 'none';
                 financialsCanvas.style.display = 'block';
-                drawFinancialsChart(company);
+
+                // --- FETCH LIVE FINANCIAL DATA (with cache) ---
+                let realFinancialsData = null;
+                try {
+                    showChartLoading(true);
+                    if (financialsCache[company.Symbol]) {
+                        console.log(`Using cached financial data for ${company.Symbol}`);
+                        realFinancialsData = financialsCache[company.Symbol];
+                    } else {
+                        console.log(`Fetching new financial data for ${company.Symbol}`);
+                        const [income, balance] = await Promise.all([
+                            fetchIncomeStatement(company.Symbol),
+                            fetchBalanceSheet(company.Symbol)
+                        ]);
+                        realFinancialsData = { income, balance };
+                        financialsCache[company.Symbol] = realFinancialsData; // Save to cache
+                    }
+                } catch (error) {
+                    console.warn(`Live financial API call failed for ${company.Symbol}. Using mock data. Error:`, error.message);
+                } finally {
+                    showChartLoading(false);
+                    drawFinancialsChart(company, realFinancialsData);
+                }
+                // --- END FETCH ---
             }
         }
 
-        function drawStockChart(company) {
+        function drawStockChart(company, realStockData) {
             const companyFinancials = MOCK_FINANCIAL_DATA[company.Symbol];
-            
+
             if (!companyFinancials) {
                 console.warn(`No financial data found for ${company.Symbol}`);
                 return;
             }
-            
+
+            let labels, priceData, sourceLabel;
+
+            // Check if we have VALID real data
+            if (realStockData && realStockData.labels && realStockData.labels.length > 0) {
+                labels = realStockData.labels;
+                priceData = realStockData.priceData;
+                sourceLabel = 'Stock Price (Live) 2005-2025';
+                console.log(`Displaying LIVE data for ${company.Symbol}`);
+            } else {
+                // Fallback to mock data
+                labels = companyFinancials.map(d => d.date).slice(0, 240);
+                priceData = companyFinancials.map(d => d.price).slice(0, 240);
+                sourceLabel = 'Stock Price (Mock) 2005-2025';
+                if (realStockData) { // This means the API call was made but returned empty
+                    console.warn(`Live data for ${company.Symbol} was empty. Using mock data.`);
+                }
+            }
+
             // ----- Stock Price Chart (Line) -----
             const stockCtx = document.getElementById('stock-chart').getContext('2d');
-            // Slice data to show only 2005-2025 (240 months)
-            const labels = companyFinancials.map(d => d.date).slice(0, 240);
-            const priceData = companyFinancials.map(d => d.price).slice(0, 240);
-            
+
             if (charts.stock) charts.stock.destroy();
-            
+
             charts.stock = new Chart(stockCtx, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Stock Price (USD) 2005-2025',
+                        label: sourceLabel,
                         data: priceData,
                         borderColor: '#00E5FF', // Neon Cyan
                         backgroundColor: 'rgba(0, 229, 255, 0.1)', // Neon Cyan tint
@@ -1598,6 +1849,7 @@
                             grid: { color: 'rgba(55, 65, 81, 0.5)' }
                         },
                         y: {
+                            beginAtZero: false, // Y-axis will no longer start at 0
                             ticks: { color: '#9CA3AF' },
                             grid: { color: 'rgba(55, 65, 81, 0.5)' }
                         }
@@ -1611,12 +1863,9 @@
                     }
                 }
             });
-
-            // ----- Financials Chart (Bar) -----
-            // This section has been removed as requested.
         }
 
-        function drawFinancialsChart(company) {
+        function drawFinancialsChart(company, realFinancialsData = null) {
             const companyFinancials = MOCK_FINANCIAL_DATA[company.Symbol];
             if (!companyFinancials) {
                 console.warn(`No financial data found for ${company.Symbol}`);
@@ -1624,14 +1873,65 @@
             }
 
             const financialsCtx = document.getElementById('financials-chart').getContext('2d');
-            
-            // Show data for the last 10 years as an example
-            const annualData = companyFinancials.filter(d => d.date.endsWith('-12')); // Get Dec data for each year
-            const annualLabels = annualData.map(d => d.date.slice(0, 4)).slice(-10); // Last 10 years (2021-2030)
-            
-            const revenueData = annualData.map(d => d.revenue / 1e3).slice(-10); // in Billions
-            const earningsData = annualData.map(d => d.earnings / 1e3).slice(-10); // in Billions
-            const debtData = annualData.map(d => d.debt / 1e3).slice(-10); // in Billions
+
+            let annualLabels, revenueData, earningsData, debtData, sourceLabel;
+
+            // Try to parse real data first
+            try {
+                if (realFinancialsData && realFinancialsData.income && realFinancialsData.balance) {
+                    console.log(`Displaying LIVE financial data for ${company.Symbol}`);
+                    const dataMap = {};
+
+                    // Process Income Statement (newest first)
+                    realFinancialsData.income.forEach(report => {
+                        const year = report.fiscalDateEnding.slice(0, 4);
+                        dataMap[year] = {
+                            revenue: parseFloat(report.totalRevenue),
+                            earnings: parseFloat(report.netIncome)
+                        };
+                    });
+
+                    // Process Balance Sheet (newest first)
+                    realFinancialsData.balance.forEach(report => {
+                        const year = report.fiscalDateEnding.slice(0, 4);
+                        if (dataMap[year]) {
+                            // Use totalDebt if available, otherwise longTermDebt, otherwise 0
+                            const debt = parseFloat(report.totalDebt) || parseFloat(report.longTermDebt) || 0;
+                            dataMap[year].debt = debt;
+                        }
+                    });
+
+                    // Filter for 2021-2030 and sort ascending
+                    const sortedYears = Object.keys(dataMap)
+                        .filter(year => parseInt(year) >= 2021 && parseInt(year) <= 2030)
+                        .sort();
+
+                    if (sortedYears.length === 0) throw new Error("No matching annual data found in live feed.");
+
+                    annualLabels = sortedYears;
+                    revenueData = sortedYears.map(year => dataMap[year].revenue / 1e9); // in Billions
+                    earningsData = sortedYears.map(year => dataMap[year].earnings / 1e9); // in Billions
+                    debtData = sortedYears.map(year => (dataMap[year].debt || 0) / 1e9); // in Billions
+                    sourceLabel = ' (Live)';
+                } else {
+                    throw new Error('Real data is null or incomplete, using mock data.');
+                }
+            } catch (error) {
+                // Fallback to mock data
+                console.warn(error.message);
+                const annualData = companyFinancials.filter(d => d.date.endsWith('-12')); // Get Dec data for each year
+                const filteredData = annualData.filter(d => {
+                    const year = parseInt(d.date.slice(0, 4));
+                    return year >= 2021 && year <= 2030;
+                });
+
+                annualLabels = filteredData.map(d => d.date.slice(0, 4));
+                revenueData = filteredData.map(d => d.revenue / 1e3); // in Billions
+                earningsData = filteredData.map(d => d.earnings / 1e3); // in Billions
+                debtData = filteredData.map(d => d.debt / 1e3); // in Billions
+                sourceLabel = ' (Mock)';
+            }
+
 
             // Define colors for past and future (2025+)
             const pastColorRevenue = '#39FF14'; // Neon Green
@@ -1640,16 +1940,16 @@
             const futureColorEarnings = '#9AFBFF'; // Light Neon Cyan
             const pastColorDebt = '#FF073A'; // Neon Pink/Red
             const futureColorDebt = '#FF9AB2'; // Light Neon Pink
-            
+
             if (charts.financials) charts.financials.destroy();
-            
+
             charts.financials = new Chart(financialsCtx, {
                 type: 'bar',
                 data: {
                     labels: annualLabels,
                     datasets: [
                         {
-                            label: 'Revenue (Billion USD)',
+                            label: `Revenue (Billion USD)${sourceLabel}`,
                             data: revenueData,
                             backgroundColor: (context) => {
                                 const year = context.chart.data.labels[context.dataIndex];
@@ -1657,7 +1957,7 @@
                             },
                         },
                         {
-                            label: 'Earnings (Billion USD)',
+                            label: `Earnings (Billion USD)${sourceLabel}`,
                             data: earningsData,
                             backgroundColor: (context) => {
                                 const year = context.chart.data.labels[context.dataIndex];
@@ -1665,7 +1965,7 @@
                             },
                         },
                         {
-                            label: 'Debt (Billion USD)',
+                            label: `Debt (Billion USD)${sourceLabel}`,
                             data: debtData,
                             backgroundColor: (context) => {
                                 const year = context.chart.data.labels[context.dataIndex];
@@ -1684,6 +1984,7 @@
                             grid: { display: false }
                         },
                         y: {
+                            beginAtZero: false, // Y-axis will no longer start at 0
                             stacked: false,
                             ticks: { color: '#9CA3AF' },
                             grid: { color: 'rgba(55, 65, 81, 0.5)' },
@@ -1707,6 +2008,5 @@
 
     </script>
 </body>
+
 </html>
-
-
