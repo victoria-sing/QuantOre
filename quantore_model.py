@@ -10,6 +10,15 @@
 import os
 import numpy as np
 import pandas as pd
+
+# --- Fix Matplotlib backend for headless or Tk errors ---
+import matplotlib
+try:
+    import tkinter
+    matplotlib.use('TkAgg')  # normal interactive backend
+except Exception:
+    matplotlib.use('Agg')  # fallback for environments without GUI
+
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
