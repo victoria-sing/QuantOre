@@ -10,20 +10,23 @@
 import os
 import numpy as np
 import pandas as pd
+import tkinter as tk
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.metrics import r2_score, mean_squared_error
+from xgboost import XGBRegressor
+
 
 # ==========================================================
-# 1️⃣ CONFIGURATION
+# CONFIGURATION
 # ==========================================================
 DATA_FOLDER = "./flood data"   # Folder containing all company CSVs
 
 # ==========================================================
-# 2️⃣ HELPER FUNCTIONS
+# HELPER FUNCTIONS
 # ==========================================================
 
 def detect_companies(folder):
@@ -49,7 +52,7 @@ def load_company_data(company, file_list):
     Handles metadata header + time–series blocks safely.
     """
     dfs = []
-    print(f"\n📦 Processing {company}: {len(file_list)} site files")
+    print(f"\n Processing {company}: {len(file_list)} site files")
 
     for file in tqdm(file_list, desc=f"Loading {company}", unit="file"):
         try:
@@ -66,7 +69,7 @@ def load_company_data(company, file_list):
             lon = pd.to_numeric(header_values[1], errors="coerce")
 
             if pd.isna(lat) or pd.isna(lon):
-                tqdm.write(f"⚠️ Skipping {os.path.basename(file)} — invalid lat/lon values")
+                tqdm.write(f" Skipping {os.path.basename(file)} — invalid lat/lon values")
                 continue
 
             # --- Step 2: Find where the time-series starts ---
@@ -77,7 +80,7 @@ def load_company_data(company, file_list):
                     break
 
             if start_idx is None:
-                tqdm.write(f"⚠️ Skipping {os.path.basename(file)} — no time/date header found")
+                tqdm.write(f" Skipping {os.path.basename(file)} — no time/date header found")
                 continue
 
             # --- Step 3: Read time-series data from that line onward ---
@@ -93,7 +96,7 @@ def load_company_data(company, file_list):
             # Detect discharge/rainfall column
             discharge_cols = [c for c in df.columns if "discharge" in c.lower() or "rain" in c.lower()]
             if not discharge_cols:
-                tqdm.write(f"⚠️ Skipping {os.path.basename(file)} — no discharge/rain column found")
+                tqdm.write(f" Skipping {os.path.basename(file)} — no discharge/rain column found")
                 continue
             df.rename(columns={discharge_cols[0]: "FloodAmount"}, inplace=True)
 
@@ -107,22 +110,29 @@ def load_company_data(company, file_list):
             dfs.append(df)
 
         except Exception as e:
-            tqdm.write(f"❌ Error reading {os.path.basename(file)}: {e}")
+            tqdm.write(f" Error reading {os.path.basename(file)}: {e}")
 
     if not dfs:
-        tqdm.write(f"⚠️ No valid data for {company}")
+        tqdm.write(f" No valid data for {company}")
         return pd.DataFrame()
 
     merged = pd.concat(dfs, ignore_index=True)
-    grouped = merged.groupby("Date").agg({
+
+    # --- Convert daily data to monthly averages ---
+    merged["Date"] = pd.to_datetime(merged["Date"])
+    merged = merged.set_index("Date")
+
+    # Resample daily → monthly (end of month)
+    monthly = merged.resample("M").agg({
         "Latitude": "mean",
         "Longitude": "mean",
         "FloodAmount": "mean"
     }).reset_index()
-    grouped["Company"] = company
 
-    tqdm.write(f"✅ {company}: {len(dfs)} valid sites processed")
-    return grouped
+    monthly["Company"] = company
+
+    tqdm.write(f" {company}: {len(dfs)} valid sites processed and aggregated monthly")
+    return monthly
 
 
 def add_stock_data(company_data):
@@ -133,11 +143,11 @@ def add_stock_data(company_data):
     company = company_data["Company"].iloc[0]
     stock_file = os.path.join("./stock data", f"{company}_stock.csv")
     if not os.path.exists(stock_file):
-        print(f"⚠️ No stock file found for {company}")
+        print(f" No stock file found for {company}")
         return pd.DataFrame()
 
     stock = pd.read_csv(stock_file)
-    stock["Date"] = pd.to_datetime(stock["Date"], format="%m/%Y", errors="coerce")
+    stock["Date"] = pd.to_datetime(stock["Date"], format="%m/%Y", errors="coerce") + pd.offsets.MonthEnd(0)
     stock["Company"] = company
     stock["Close"] = pd.to_numeric(stock["Close"].astype(str).str.replace(",", ""), errors="coerce")
     stock = stock.dropna(subset=["Date", "Close"])
@@ -158,7 +168,7 @@ def build_dataset():
     into a single training dataset.
     """
     company_files = detect_companies(DATA_FOLDER)
-    print(f"\n📊 Found {len(company_files)} companies in '{DATA_FOLDER}'")
+    print(f"\n Found {len(company_files)} companies in '{DATA_FOLDER}'")
 
     all_data = []
     for company, files in tqdm(company_files.items(), desc="Companies", unit="company"):
@@ -169,15 +179,15 @@ def build_dataset():
                 all_data.append(merged)
 
     if not all_data:
-        raise RuntimeError("❌ No valid combined data found for any company.")
+        raise RuntimeError(" No valid combined data found for any company.")
 
     df = pd.concat(all_data).reset_index(drop=True)
-    print(f"\n✅ Combined dataset built with {len(df)} rows across {df['Company'].nunique()} companies.\n")
+    print(f"\n Combined dataset built with {len(df)} rows across {df['Company'].nunique()} companies.\n")
     return df
 
 
 # ==========================================================
-# 3️⃣ MAIN PIPELINE
+#  MAIN PIPELINE
 # ==========================================================
 def main():
     print("🚀 QuantOre Flood Model starting...\n")
@@ -194,17 +204,18 @@ def main():
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
 
     # ==========================================================
-    # 🌲 Random Forest Model
+    #  Random Forest Model
     # ==========================================================
-    print("\n🌲 Training Random Forest...")
+    print("\n Training Random Forest...")
     rf = RandomForestRegressor(n_estimators=200, random_state=42)
     rf.fit(X_train, y_train)
     rf_pred = rf.predict(X_test)
+    
 
     # ==========================================================
-    # 🧠 MLP Neural Network
+    #  MLP Neural Network
     # ==========================================================
-    print("\n🧠 Training MLP Neural Network...")
+    print("\n Training MLP Neural Network...")
     mlp = MLPRegressor(hidden_layer_sizes=(128, 64, 32),
                        activation='relu',
                        solver='adam',
@@ -212,6 +223,21 @@ def main():
                        random_state=42)
     mlp.fit(X_train, y_train)
     mlp_pred = mlp.predict(X_test)
+    # ==========================================================
+    #  XGBoost Regressor
+    # ==========================================================
+    print("\n Training XGBoost Regressor...")
+    xgb = XGBRegressor(
+        n_estimators=300,
+        learning_rate=0.005,
+        max_depth=12,
+        subsample=0.6,
+        colsample_bytree=0.6,
+        random_state=0,
+        objective='reg:squarederror'
+    )
+    xgb.fit(X_train, y_train)
+    xgb_pred = xgb.predict(X_test)
 
     # --- Evaluate models ---
     def eval_model(name, y_true, y_pred):
@@ -220,56 +246,17 @@ def main():
         print(f"{name}:  R² = {r2:.3f} | RMSE = {rmse:.3f}")
         return r2, rmse
 
-    print("\n📊 Model Performance Summary:")
-    eval_model("🌲 Random Forest", y_test, rf_pred)
-    eval_model("🧠 MLP Neural Net", y_test, mlp_pred)
+    print("\n Model Performance Summary:")
+    eval_model(" Random Forest", y_test, rf_pred)
+    eval_model(" MLP Neural Net", y_test, mlp_pred)
+    eval_model(" XGBoost Regressor", y_test, xgb_pred)
+
+    
 
     # ==========================================================
-    # 📈 Visualization
+    #  Rainfall vs Stock Price (Correlation Visualization)
     # ==========================================================
-    # plt.figure(figsize=(11,5))
-    # plt.plot(y_test.values, label="Actual", color="#1f77b4")
-    # plt.plot(rf_pred, label="Random Forest", color="#2ca02c", alpha=0.8)
-    # plt.plot(mlp_pred, label="MLP Prediction", color="#d62728", alpha=0.7)
-    # plt.title("Predicted vs Actual Future Stock Change After Flooding", fontsize=12)
-    # plt.xlabel("Flood Events (chronological)")
-    # plt.ylabel("Δ Stock Price (Next Month)")
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.show()
-    # # ==========================================================
-    # # 💹 Reconstruct Stock Prices (from predicted deltas)
-    # # ==========================================================
-    # print("\n💹 Reconstructing stock price curves from predictions...")
-
-    # # Get the last 20% of actual stock prices (test set)
-    # start_index = int(len(df) * 0.8)
-    # actual_prices = df["Close"].iloc[start_index:].values
-    # start_price = actual_prices[0]
-
-    # # Build cumulative predicted price sequences
-    # pred_rf_prices = [start_price]
-    # pred_mlp_prices = [start_price]
-    # for i in range(len(rf_pred)):
-    #     pred_rf_prices.append(pred_rf_prices[-1] + rf_pred[i])
-    #     pred_mlp_prices.append(pred_mlp_prices[-1] + mlp_pred[i])
-
-    # # Plot actual vs predicted stock prices
-    # plt.figure(figsize=(11,5))
-    # plt.plot(actual_prices, label="Actual Stock Price", color="blue")
-    # plt.plot(pred_rf_prices[:-1], label="Predicted RF Price", color="green", alpha=0.8)
-    # plt.plot(pred_mlp_prices[:-1], label="Predicted MLP Price", color="red", alpha=0.7)
-    # plt.title("Predicted vs Actual Stock Price (Reconstructed from Flood Data)", fontsize=12)
-    # plt.xlabel("Time (test set portion)")
-    # plt.ylabel("Stock Price ($)")
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.show()
-
-    # ==========================================================
-    # 🌧️ Rainfall vs Stock Price (Correlation Visualization)
-    # ==========================================================
-    print("\n🌧️ Plotting rainfall vs stock price correlation per company...")
+    print("\n Plotting rainfall vs stock price correlation per company...")
 
     for company in df["Company"].unique():
         sub = df[df["Company"] == company].sort_values("Date")
@@ -298,16 +285,19 @@ def main():
 
         plt.gcf().autofmt_xdate(rotation=45)
         plt.tight_layout()
-        plt.show()
+        os.makedirs("plots", exist_ok=True)
+        plt.savefig(f"plots/{company}_chart.png", dpi=300, bbox_inches="tight")
+        plt.close()
+
 
         # --- Print correlation for quick insight ---
         corr = sub[["FloodAmount", "Close"]].corr().iloc[0, 1]
-        print(f"   💧 {company}: Flood–Stock correlation = {corr:.3f}")
+        print(f"    {company}: Flood–Stock correlation = {corr:.3f}")
 
     # ==========================================================
-    # 📊 Per-company: Actual vs Predicted Stock Price (test split)
+    #  Per-company: Actual vs Predicted Stock Price (test split)
     # ==========================================================
-    print("\n📈 Plotting per-company price curves (test portion)...")
+    print("\n Plotting per-company price curves (test portion)...")
 
     for company in df["Company"].unique():
         sub = df[df["Company"] == company].copy()
@@ -323,18 +313,24 @@ def main():
         # predict deltas on the test rows, then reconstruct price from the first actual test price
         rf_d = rf.predict(Xc_test)
         mlp_d = mlp.predict(Xc_test)
+        xgb_d = xgb.predict(Xc_test)
+
 
         start_price = float(yc_actual_close.iloc[0])
         rf_price = [start_price]
         mlp_price = [start_price]
+        xgb_price = [start_price]
         for i in range(len(rf_d)):
             rf_price.append(rf_price[-1] + rf_d[i])
             mlp_price.append(mlp_price[-1] + mlp_d[i])
+            xgb_price.append(xgb_price[-1] + xgb_d[i])
 
         plt.figure(figsize=(10,5))
         plt.plot(dates.values, yc_actual_close.values, label="Actual", color="blue")
         plt.plot(dates.values, rf_price[:-1], label="RF Predicted", color="green")
         plt.plot(dates.values, mlp_price[:-1], label="MLP Predicted", color="red")
+        plt.plot(dates.values, xgb_price[:-1], label="XGB Predicted", color="purple")
+
         plt.title(f"{company}: Predicted vs Actual Stock Price (Test Portion)")
         plt.xlabel("Date")
         plt.ylabel("Price ($)")
@@ -344,11 +340,11 @@ def main():
         plt.show()
     
      # ==========================================================
-    # 🔮 Combined Past Predictions + 6-Month Geometric Flood Forecast
+    #  Combined Past Predictions + 6-Month Geometric Flood Forecast
     # ==========================================================
-    print("\n🔮 Generating 6-Month Extended Forecasts (geometric rainfall increase)...")
+    print("\n Generating 6-Month Extended Forecasts (geometric rainfall increase)...")
 
-    horizon = 6
+    horizon = 25
     decreasing_future_rows = []
     increasing_future_rows = []
     static_low_future_rows = []
@@ -356,24 +352,29 @@ def main():
 
 
     for company in df["Company"].unique():
-        # --- Historical subset ---
+    # --- Historical subset ---
         sub = df[df["Company"] == company].sort_values("Date").iloc[-24:].copy()
         lat_mean = float(sub["Latitude"].mean())
         lon_mean = float(sub["Longitude"].mean())
         last_date = pd.to_datetime(sub["Date"].max())
         last_price = float(sub["Close"].iloc[-1])
 
-        # 🌧️ Geometric rainfall growath: multiplies each month (exponential style)
-        decreasing_floods = np.geomspace(1500, 100, horizon)
-        increasing_floods = np.geomspace(100, 1500, horizon)
-        static_low_floods = np.geomspace(100, 100, horizon)
-        static_high_floods = np.geomspace(1500, 1500, horizon)
+        #  Geometric rainfall growath: multiplies each month (exponential style)
+        # Cameco
+        decreasing_floods = np.geomspace(2,0.2, horizon)
+
+        # BHP
+        #decreasing_floods = [0.19, 0.17, 0.12, 0.25, 0.57, 0.39, 0.45, 0.28, 0.45, 0.23, 0.01, 0.11, 0.20, 0.21, 0.11, 0.35, 0.23, 0.19, 0.26, 0.23, 0.14, 0.22, 0.45, 0.55, 0.34]
+        increasing_floods = [0.19, 0.17, 0.12, 0.25, 0.57, 0.39, 0.45, 0.28, 0.45, 0.23, 0.01, 0.11, 0.20, 0.21, 0.11, 0.35, 0.23, 0.19, 0.26, 0.23, 0.14, 0.22, 0.45, 0.55, 0.34]
+        static_low_floods = np.geomspace(0.2, 0.2, horizon)
+        
+        static_high_floods = np.geomspace(2, 2, horizon)
 
 
         for i in range(horizon):
             decreasing_future_rows.append({
                 "Company": company,
-                "Date": (last_date + pd.offsets.MonthEnd(i+1)).normalize(),
+                "Date": (last_date + pd.offsets.MonthEnd(i)).normalize(),
                 "FloodAmount": float(decreasing_floods[i]),
                 "Latitude": lat_mean,
                 "Longitude": lon_mean
@@ -400,7 +401,7 @@ def main():
         for i in range(horizon):
             static_high_future_rows.append({
                 "Company": company,
-                "Date": (last_date + pd.offsets.MonthEnd(i+1)).normalize(),
+                "Date": (last_date + pd.offsets.MonthEnd(i)).normalize(),
                 "FloodAmount": float(static_high_floods[i]),
                 "Latitude": lat_mean,
                 "Longitude": lon_mean
@@ -438,74 +439,110 @@ def main():
         # Predict Δ changes
         future_decreasing_df["Pred_RF_Change"]  = rf.predict(X_decreasing_future)
         future_decreasing_df["Pred_MLP_Change"] = mlp.predict(X_decreasing_future)
+        future_decreasing_df["Pred_XGB_Change"] = xgb.predict(X_decreasing_future)
+
 
         future_increasing_df["Pred_RF_Change"]  = rf.predict(X_increasing_future)
         future_increasing_df["Pred_MLP_Change"] = mlp.predict(X_increasing_future)
+        future_increasing_df["Pred_XGB_Change"] = xgb.predict(X_increasing_future)
+
 
         future_static_low_df["Pred_RF_Change"]  = rf.predict(X_static_low_future)
         future_static_low_df["Pred_MLP_Change"] = mlp.predict(X_static_low_future)
+        future_static_low_df["Pred_XGB_Change"] = xgb.predict(X_static_low_future)
+
 
         future_static_high_df["Pred_RF_Change"]  = rf.predict(X_static_high_future)
         future_static_high_df["Pred_MLP_Change"] = mlp.predict(X_static_high_future)
+        future_static_high_df["Pred_XGB_Change"] = xgb.predict(X_static_high_future)
+
 
         # Roll forward prices
         rf_prices = [last_price]
         mlp_prices = [last_price]
-        for d_rf, d_mlp in zip(future_decreasing_df["Pred_RF_Change"], future_decreasing_df["Pred_MLP_Change"]):
+        xgb_prices = [last_price]
+
+        for d_rf, d_mlp, d_xgb in zip(future_decreasing_df["Pred_RF_Change"], future_decreasing_df["Pred_MLP_Change"], future_decreasing_df["Pred_XGB_Change"]):
             rf_prices.append(rf_prices[-1] + d_rf)
             mlp_prices.append(mlp_prices[-1] + d_mlp)
+            xgb_prices.append(xgb_prices[-1] + d_xgb)
         future_decreasing_df["Pred_RF_Price"]  = rf_prices[1:]
         future_decreasing_df["Pred_MLP_Price"] = mlp_prices[1:]
+        future_decreasing_df["Pred_XGB_Price"] = xgb_prices[1:]
+
 
         rf_prices = [last_price]
         mlp_prices = [last_price]
-        for d_rf, d_mlp in zip(future_increasing_df["Pred_RF_Change"], future_increasing_df["Pred_MLP_Change"]):
+        xgb_prices = [last_price]
+        for d_rf, d_mlp, d_xgb in zip(future_increasing_df["Pred_RF_Change"], future_increasing_df["Pred_MLP_Change"], future_increasing_df["Pred_XGB_Change"]):
             rf_prices.append(rf_prices[-1] + d_rf)
             mlp_prices.append(mlp_prices[-1] + d_mlp)
+            xgb_prices.append(xgb_prices[-1] + d_xgb)
         future_increasing_df["Pred_RF_Price"]  = rf_prices[1:]
         future_increasing_df["Pred_MLP_Price"] = mlp_prices[1:]
+        future_increasing_df["Pred_XGB_Price"] = xgb_prices[1:]
+
 
         rf_prices = [last_price]
         mlp_prices = [last_price]
-        for d_rf, d_mlp in zip(future_static_low_df["Pred_RF_Change"], future_static_low_df["Pred_MLP_Change"]):
+        xgb_prices = [last_price]
+        for d_rf, d_mlp, d_xgb in zip(future_static_low_df["Pred_RF_Change"], future_static_low_df["Pred_MLP_Change"], future_static_low_df["Pred_XGB_Change"]):
             rf_prices.append(rf_prices[-1] + d_rf)
             mlp_prices.append(mlp_prices[-1] + d_mlp)
+            xgb_prices.append(xgb_prices[-1] + d_xgb)
         future_static_low_df["Pred_RF_Price"]  = rf_prices[1:]
         future_static_low_df["Pred_MLP_Price"] = mlp_prices[1:]
+        future_static_low_df["Pred_XGB_Price"] = xgb_prices[1:]
+
 
         rf_prices = [last_price]
         mlp_prices = [last_price]
-        for d_rf, d_mlp in zip(future_static_high_df["Pred_RF_Change"], future_static_high_df["Pred_MLP_Change"]):
+        xgb_prices = [last_price]
+        for d_rf, d_mlp, d_xgb in zip(future_static_high_df["Pred_RF_Change"], future_static_high_df["Pred_MLP_Change"], future_static_high_df["Pred_XGB_Change"]):
             rf_prices.append(rf_prices[-1] + d_rf)
             mlp_prices.append(mlp_prices[-1] + d_mlp)
+            xgb_prices.append(xgb_prices[-1] + d_xgb)
+
         future_static_high_df["Pred_RF_Price"]  = rf_prices[1:]
         future_static_high_df["Pred_MLP_Price"] = mlp_prices[1:]
+        future_static_high_df["Pred_XGB_Price"] = xgb_prices[1:]
+    
 
         # --- Rebuild historical predicted series ---
         test_rf = rf.predict(sub[["FloodAmount", "Latitude", "Longitude", "Company_Code"]])
         test_mlp = mlp.predict(sub[["FloodAmount", "Latitude", "Longitude", "Company_Code"]])
+        test_xgb = xgb.predict(sub[["FloodAmount", "Latitude", "Longitude", "Company_Code"]])
         hist_rf_prices = [sub["Close"].iloc[0]]
         hist_mlp_prices = [sub["Close"].iloc[0]]
-        for drf, dmlp in zip(test_rf, test_mlp):
+        hist_xgb_prices = [sub["Close"].iloc[0]]
+        for drf, dmlp, dxgb in zip(test_rf, test_mlp, test_xgb):
             hist_rf_prices.append(hist_rf_prices[-1] + drf)
             hist_mlp_prices.append(hist_mlp_prices[-1] + dmlp)
+            hist_xgb_prices.append(hist_xgb_prices[-1] + dxgb)
         sub["RF_Price"]  = hist_rf_prices[1:]
         sub["MLP_Price"] = hist_mlp_prices[1:]
+        sub["XGB_Price"] = hist_xgb_prices[1:]
+
 
         # --- Plot unified timeline (past + future) ---
         plt.figure(figsize=(11,5))
         plt.plot(sub["Date"], sub["Close"], color="blue", label="Actual (Last 24m)")
-        plt.plot(sub["Date"], sub["RF_Price"], "g--", label="RF Predicted (Last 24m)")
-        plt.plot(sub["Date"], sub["MLP_Price"], "r--", label="MLP Predicted (Last 24m)")
-        # plt.plot(future_decreasing_df["Date"], future_decreasing_df["Pred_RF_Price"], "go--", color="red",label="RF Forecast (Next 6m)")
-        plt.plot(future_decreasing_df["Date"], future_decreasing_df["Pred_MLP_Price"], "ro--", color="orange", label="MLP Forecast (Next 6m)")
-        # plt.plot(future_increasing_df["Date"], future_increasing_df["Pred_RF_Price"], "go--", color="green",label="RF Forecast (Next 6m)")
-        plt.plot(future_increasing_df["Date"], future_increasing_df["Pred_MLP_Price"], "ro--", color="black", label="MLP Forecast (Next 6m)")
-        # plt.plot(future_static_low_df["Date"], future_static_low_df["Pred_RF_Price"], "go--", color="teal",label="RF Forecast (Next 6m)")
-        plt.plot(future_static_low_df["Date"], future_static_low_df["Pred_MLP_Price"], "ro--", color="gray", label="MLP Forecast (Next 6m)")
-        # plt.plot(future_static_high_df["Date"], future_static_high_df["Pred_RF_Price"], "go--", color="pink",label="RF Forecast (Next 6m)")
-        plt.plot(future_static_high_df["Date"], future_static_high_df["Pred_MLP_Price"], "ro--", color="brown", label="MLP Forecast (Next 6m)")
+        plt.plot(sub["Date"], sub["RF_Price"], color ="red", label="RF Predicted (Last 24m)")
+        plt.plot(sub["Date"], sub["MLP_Price"], color = "green", label="MLP Predicted (Last 24m)")
+        plt.plot(sub["Date"], sub["XGB_Price"], color = "purple", label="XGB Predicted (Last 24m)")
 
+        #plt.plot(future_decreasing_df["Date"], future_decreasing_df["Pred_RF_Price"], "go--", color="red",label="RF Forecast (Next 6m)")
+        #plt.plot(future_decreasing_df["Date"], future_decreasing_df["Pred_MLP_Price"], "ro--", color="red", label="MLP Forecast (Next 6m)")
+        #plt.plot(future_increasing_df["Date"], future_increasing_df["Pred_RF_Price"], "go--", color="green",label="RF Forecast (Next 6m)")
+        #plt.plot(future_increasing_df["Date"], future_increasing_df["Pred_MLP_Price"], "ro--", color="green", label="MLP Forecast (Next 6m)")
+        #plt.plot(future_static_low_df["Date"], future_static_low_df["Pred_RF_Price"], "go--", color="teal",label="RF Forecast (Next 6m)")
+        #plt.plot(future_static_low_df["Date"], future_static_low_df["Pred_MLP_Price"], "ro--", color="gray", label="MLP Forecast (Next 6m)")
+        #plt.plot(future_static_high_df["Date"], future_static_high_df["Pred_RF_Price"], "go--", color="pink",label="RF Forecast (Next 6m)")
+        #plt.plot(future_static_high_df["Date"], future_static_high_df["Pred_MLP_Price"], "ro--", color="black", label="MLP Forecast (Next 6m)")
+        plt.plot(future_decreasing_df["Date"], future_decreasing_df["Pred_XGB_Price"],"ro--", color="blue", label="XGB Forecast (Next 6m)")
+        plt.plot(future_increasing_df["Date"], future_increasing_df["Pred_XGB_Price"],"ro--", color="yellow", label="XGB Forecast (Next 6m)")
+        plt.plot(future_static_low_df["Date"], future_static_low_df["Pred_XGB_Price"],"ro--", color="black", label="XGB Forecast (Next 6m)")
+        plt.plot(future_static_high_df["Date"], future_static_high_df["Pred_XGB_Price"],"ro--", color="green", label="XGB Forecast (Next 6m)")
         plt.axvline(sub["Date"].iloc[-1], color="gray", linestyle="--", alpha=0.7)
         plt.text(sub["Date"].iloc[-1], plt.ylim()[1]*0.95, "Forecast Start", rotation=90, color="gray")
 
@@ -520,7 +557,7 @@ def main():
         plt.show()
 
         # Print future flood values for transparency
-        print(f"\n🌧️ Synthetic flood values for {company}:")
+        print(f"\n Synthetic flood values for {company}:")
         print(future_decreasing_df[["Date", "FloodAmount"]])
         print(future_increasing_df[["Date", "FloodAmount"]])
         print(future_static_low_df[["Date", "FloodAmount"]])
@@ -548,7 +585,7 @@ def main():
         ignore_index=True
     )
     
-    print("\n📈 Head of future forecast table:")
+    print("\n Head of future forecast table:")
     print(decreasing_forecasts[["Company", "Date", "FloodAmount"]].head())
     print(increasing_forecasts[["Company", "Date", "FloodAmount"]].head())
     print(static_low_forecasts[["Company", "Date", "FloodAmount"]].head())
@@ -557,7 +594,7 @@ def main():
 
 
 # ==========================================================
-# 4️⃣ ENTRY POINT
+#  ENTRY POINT
 # ==========================================================
 if __name__ == "__main__":
     main()
