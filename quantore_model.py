@@ -227,38 +227,177 @@ def main():
     # ==========================================================
     # 📈 Visualization
     # ==========================================================
-    plt.figure(figsize=(11,5))
-    plt.plot(y_test.values, label="Actual", color="#1f77b4")
-    plt.plot(rf_pred, label="Random Forest", color="#2ca02c", alpha=0.8)
-    plt.plot(mlp_pred, label="MLP Prediction", color="#d62728", alpha=0.7)
-    plt.title("Predicted vs Actual Future Stock Change After Flooding", fontsize=12)
-    plt.xlabel("Flood Events (chronological)")
-    plt.ylabel("Δ Stock Price (Next Month)")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    # plt.figure(figsize=(11,5))
+    # plt.plot(y_test.values, label="Actual", color="#1f77b4")
+    # plt.plot(rf_pred, label="Random Forest", color="#2ca02c", alpha=0.8)
+    # plt.plot(mlp_pred, label="MLP Prediction", color="#d62728", alpha=0.7)
+    # plt.title("Predicted vs Actual Future Stock Change After Flooding", fontsize=12)
+    # plt.xlabel("Flood Events (chronological)")
+    # plt.ylabel("Δ Stock Price (Next Month)")
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.show()
+    # # ==========================================================
+    # # 💹 Reconstruct Stock Prices (from predicted deltas)
+    # # ==========================================================
+    # print("\n💹 Reconstructing stock price curves from predictions...")
+
+    # # Get the last 20% of actual stock prices (test set)
+    # start_index = int(len(df) * 0.8)
+    # actual_prices = df["Close"].iloc[start_index:].values
+    # start_price = actual_prices[0]
+
+    # # Build cumulative predicted price sequences
+    # pred_rf_prices = [start_price]
+    # pred_mlp_prices = [start_price]
+    # for i in range(len(rf_pred)):
+    #     pred_rf_prices.append(pred_rf_prices[-1] + rf_pred[i])
+    #     pred_mlp_prices.append(pred_mlp_prices[-1] + mlp_pred[i])
+
+    # # Plot actual vs predicted stock prices
+    # plt.figure(figsize=(11,5))
+    # plt.plot(actual_prices, label="Actual Stock Price", color="blue")
+    # plt.plot(pred_rf_prices[:-1], label="Predicted RF Price", color="green", alpha=0.8)
+    # plt.plot(pred_mlp_prices[:-1], label="Predicted MLP Price", color="red", alpha=0.7)
+    # plt.title("Predicted vs Actual Stock Price (Reconstructed from Flood Data)", fontsize=12)
+    # plt.xlabel("Time (test set portion)")
+    # plt.ylabel("Stock Price ($)")
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.show()
 
     # ==========================================================
-    # 🔮 Future Example Predictions
+    # 📊 Per-company: Actual vs Predicted Stock Price (test split)
     # ==========================================================
-    print("\n🔮 Example Future Predictions:")
+    print("\n📈 Plotting per-company price curves (test portion)...")
 
-    future_floods = pd.DataFrame({
-        "Company": ["CAMECO", "BHP", "RioTinto"],
-        "FloodAmount": [200, 450, 300],
-        "Latitude": [-31.95, -23.65, -19.92],
-        "Longitude": [115.86, -70.40, -43.94]
-    })
+    for company in df["Company"].unique():
+        sub = df[df["Company"] == company].copy()
+        if len(sub) < 10:
+            continue  # not enough points to plot
 
-    mapping = dict(zip(df["Company"].astype("category").cat.categories,
-                       df["Company"].astype("category").cat.codes))
-    future_floods["Company_Code"] = future_floods["Company"].map(mapping)
+        # same feature columns, but only the test portion for this company
+        split_idx = int(len(sub) * 0.8)
+        Xc_test = sub[["FloodAmount", "Latitude", "Longitude", "Company_Code"]].iloc[split_idx:]
+        yc_actual_close = sub["Close"].iloc[split_idx:]
+        dates = sub["Date"].iloc[split_idx:]
 
-    future_floods["Pred_RF_Change"]  = rf.predict(future_floods[["FloodAmount", "Latitude", "Longitude", "Company_Code"]])
-    future_floods["Pred_MLP_Change"] = mlp.predict(future_floods[["FloodAmount", "Latitude", "Longitude", "Company_Code"]])
+        # predict deltas on the test rows, then reconstruct price from the first actual test price
+        rf_d = rf.predict(Xc_test)
+        mlp_d = mlp.predict(Xc_test)
 
-    print(future_floods)
-    print("\n✅ QuantOre Flood Model complete.")
+        start_price = float(yc_actual_close.iloc[0])
+        rf_price = [start_price]
+        mlp_price = [start_price]
+        for i in range(len(rf_d)):
+            rf_price.append(rf_price[-1] + rf_d[i])
+            mlp_price.append(mlp_price[-1] + mlp_d[i])
+
+        plt.figure(figsize=(10,5))
+        plt.plot(dates.values, yc_actual_close.values, label="Actual", color="blue")
+        plt.plot(dates.values, rf_price[:-1], label="RF Predicted", color="green")
+        plt.plot(dates.values, mlp_price[:-1], label="MLP Predicted", color="red")
+        plt.title(f"{company}: Predicted vs Actual Stock Price (Test Portion)")
+        plt.xlabel("Date")
+        plt.ylabel("Price ($)")
+        plt.xticks(rotation=45)
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+        # ==========================================================
+    # 🔮 Combined Past Predictions + 6-Month Geometric Flood Forecast
+    # ==========================================================
+    print("\n🔮 Generating 6-Month Extended Forecasts (geometric rainfall increase)...")
+
+    horizon = 6
+    all_future_rows = []
+
+    for company in df["Company"].unique():
+        # --- Historical subset ---
+        sub = df[df["Company"] == company].sort_values("Date").iloc[-24:].copy()
+        lat_mean = float(sub["Latitude"].mean())
+        lon_mean = float(sub["Longitude"].mean())
+        last_date = pd.to_datetime(sub["Date"].max())
+        last_price = float(sub["Close"].iloc[-1])
+
+        # 🌧️ Geometric rainfall growth: multiplies each month (exponential style)
+        synthetic_floods = np.geomspace(100, 1500, horizon)
+
+        for i in range(horizon):
+            all_future_rows.append({
+                "Company": company,
+                "Date": (last_date + pd.offsets.MonthEnd(i+1)).normalize(),
+                "FloodAmount": float(synthetic_floods[i]),
+                "Latitude": lat_mean,
+                "Longitude": lon_mean
+            })
+
+        # --- Build DataFrame for this company's future ---
+        future_df = pd.DataFrame([r for r in all_future_rows if r["Company"] == company])
+        cat = df["Company"].astype("category")
+        mapping = dict(zip(cat.cat.categories, cat.cat.codes))
+        future_df["Company_Code"] = future_df["Company"].map(mapping)
+
+        X_future = future_df[["FloodAmount", "Latitude", "Longitude", "Company_Code"]]
+
+        # Uncomment this if higher rainfall should *lower* stock prices:
+        # X_future["FloodAmount"] *= -1
+
+        # Predict Δ changes
+        future_df["Pred_RF_Change"]  = rf.predict(X_future)
+        future_df["Pred_MLP_Change"] = mlp.predict(X_future)
+
+        # Roll forward prices
+        rf_prices = [last_price]
+        mlp_prices = [last_price]
+        for d_rf, d_mlp in zip(future_df["Pred_RF_Change"], future_df["Pred_MLP_Change"]):
+            rf_prices.append(rf_prices[-1] + d_rf)
+            mlp_prices.append(mlp_prices[-1] + d_mlp)
+        future_df["Pred_RF_Price"]  = rf_prices[1:]
+        future_df["Pred_MLP_Price"] = mlp_prices[1:]
+
+        # --- Rebuild historical predicted series ---
+        test_rf = rf.predict(sub[["FloodAmount", "Latitude", "Longitude", "Company_Code"]])
+        test_mlp = mlp.predict(sub[["FloodAmount", "Latitude", "Longitude", "Company_Code"]])
+        hist_rf_prices = [sub["Close"].iloc[0]]
+        hist_mlp_prices = [sub["Close"].iloc[0]]
+        for drf, dmlp in zip(test_rf, test_mlp):
+            hist_rf_prices.append(hist_rf_prices[-1] + drf)
+            hist_mlp_prices.append(hist_mlp_prices[-1] + dmlp)
+        sub["RF_Price"]  = hist_rf_prices[1:]
+        sub["MLP_Price"] = hist_mlp_prices[1:]
+
+        # --- Plot unified timeline (past + future) ---
+        plt.figure(figsize=(11,5))
+        plt.plot(sub["Date"], sub["Close"], color="blue", label="Actual (Last 24m)")
+        plt.plot(sub["Date"], sub["RF_Price"], "g--", label="RF Predicted (Last 24m)")
+        plt.plot(sub["Date"], sub["MLP_Price"], "r--", label="MLP Predicted (Last 24m)")
+        plt.plot(future_df["Date"], future_df["Pred_RF_Price"], "go--", label="RF Forecast (Next 6m)")
+        plt.plot(future_df["Date"], future_df["Pred_MLP_Price"], "ro--", label="MLP Forecast (Next 6m)")
+
+        plt.axvline(sub["Date"].iloc[-1], color="gray", linestyle="--", alpha=0.7)
+        plt.text(sub["Date"].iloc[-1], plt.ylim()[1]*0.95, "Forecast Start", rotation=90, color="gray")
+
+        plt.xlim(sub["Date"].iloc[0], future_df["Date"].iloc[-1])
+        plt.title(f"{company}: Actual + 6-Month Forecast (Geometric Flood Increase)")
+        plt.xlabel("Date")
+        plt.ylabel("Stock Price ($)")
+        plt.xticks(rotation=45)
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+
+        # Print future flood values for transparency
+        print(f"\n🌧️ Synthetic flood values for {company}:")
+        print(future_df[["Date", "FloodAmount"]])
+
+    future_forecasts = pd.concat(
+        [pd.DataFrame([r for r in all_future_rows if r["Company"] == c])
+         for c in df["Company"].unique()],
+        ignore_index=True
+    )
+    print("\n📈 Head of future forecast table:")
+    print(future_forecasts[["Company", "Date", "FloodAmount"]].head())
 
 
 # ==========================================================
