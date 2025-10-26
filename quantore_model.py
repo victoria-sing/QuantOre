@@ -37,12 +37,12 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.metrics import r2_score, mean_squared_error
 
 # ==========================================================
-# 1️⃣ CONFIGURATION
+# CONFIGURATION
 # ==========================================================
 DATA_FOLDER = "./flood data"   # Folder containing all company CSVs
 
 # ==========================================================
-# 2️⃣ HELPER FUNCTIONS
+# HELPER FUNCTIONS
 # ==========================================================
 
 def detect_companies(folder):
@@ -68,7 +68,7 @@ def load_company_data(company, file_list):
     Handles metadata header + time–series blocks safely.
     """
     dfs = []
-    print(f"\n📦 Processing {company}: {len(file_list)} site files")
+    print(f"\n Processing {company}: {len(file_list)} site files")
 
     for file in tqdm(file_list, desc=f"Loading {company}", unit="file"):
         try:
@@ -85,7 +85,7 @@ def load_company_data(company, file_list):
             lon = pd.to_numeric(header_values[1], errors="coerce")
 
             if pd.isna(lat) or pd.isna(lon):
-                tqdm.write(f"⚠️ Skipping {os.path.basename(file)} — invalid lat/lon values")
+                tqdm.write(f" Skipping {os.path.basename(file)} — invalid lat/lon values")
                 continue
 
             # --- Step 2: Find where the time-series starts ---
@@ -96,7 +96,7 @@ def load_company_data(company, file_list):
                     break
 
             if start_idx is None:
-                tqdm.write(f"⚠️ Skipping {os.path.basename(file)} — no time/date header found")
+                tqdm.write(f" Skipping {os.path.basename(file)} — no time/date header found")
                 continue
 
             # --- Step 3: Read time-series data from that line onward ---
@@ -112,7 +112,7 @@ def load_company_data(company, file_list):
             # Detect discharge/rainfall column
             discharge_cols = [c for c in df.columns if "discharge" in c.lower() or "rain" in c.lower()]
             if not discharge_cols:
-                tqdm.write(f"⚠️ Skipping {os.path.basename(file)} — no discharge/rain column found")
+                tqdm.write(f" Skipping {os.path.basename(file)} — no discharge/rain column found")
                 continue
             df.rename(columns={discharge_cols[0]: "FloodAmount"}, inplace=True)
 
@@ -126,10 +126,10 @@ def load_company_data(company, file_list):
             dfs.append(df)
 
         except Exception as e:
-            tqdm.write(f"❌ Error reading {os.path.basename(file)}: {e}")
+            tqdm.write(f" Error reading {os.path.basename(file)}: {e}")
 
     if not dfs:
-        tqdm.write(f"⚠️ No valid data for {company}")
+        tqdm.write(f" No valid data for {company}")
         return pd.DataFrame()
 
     merged = pd.concat(dfs, ignore_index=True)
@@ -147,7 +147,7 @@ def load_company_data(company, file_list):
 
     monthly["Company"] = company
 
-    tqdm.write(f"✅ {company}: {len(dfs)} valid sites processed and aggregated monthly")
+    tqdm.write(f" {company}: {len(dfs)} valid sites processed and aggregated monthly")
     return monthly
 
 
@@ -159,7 +159,7 @@ def add_stock_data(company_data):
     company = company_data["Company"].iloc[0]
     stock_file = os.path.join("./stock data", f"{company}_stock.csv")
     if not os.path.exists(stock_file):
-        print(f"⚠️ No stock file found for {company}")
+        print(f" No stock file found for {company}")
         return pd.DataFrame()
 
     stock = pd.read_csv(stock_file)
@@ -184,7 +184,7 @@ def build_dataset():
     into a single training dataset.
     """
     company_files = detect_companies(DATA_FOLDER)
-    print(f"\n📊 Found {len(company_files)} companies in '{DATA_FOLDER}'")
+    print(f"\n Found {len(company_files)} companies in '{DATA_FOLDER}'")
 
     all_data = []
     for company, files in tqdm(company_files.items(), desc="Companies", unit="company"):
@@ -195,15 +195,15 @@ def build_dataset():
                 all_data.append(merged)
 
     if not all_data:
-        raise RuntimeError("❌ No valid combined data found for any company.")
+        raise RuntimeError(" No valid combined data found for any company.")
 
     df = pd.concat(all_data).reset_index(drop=True)
-    print(f"\n✅ Combined dataset built with {len(df)} rows across {df['Company'].nunique()} companies.\n")
+    print(f"\n Combined dataset built with {len(df)} rows across {df['Company'].nunique()} companies.\n")
     return df
 
 
 # ==========================================================
-# 3️⃣ MAIN PIPELINE
+#  MAIN PIPELINE
 # ==========================================================
 def main():
     print("🚀 QuantOre Flood Model starting...\n")
@@ -220,17 +220,17 @@ def main():
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
 
     # ==========================================================
-    # 🌲 Random Forest Model
+    #  Random Forest Model
     # ==========================================================
-    print("\n🌲 Training Random Forest...")
+    print("\n Training Random Forest...")
     rf = RandomForestRegressor(n_estimators=200, random_state=42)
     rf.fit(X_train, y_train)
     rf_pred = rf.predict(X_test)
 
     # ==========================================================
-    # 🧠 MLP Neural Network
+    #  MLP Neural Network
     # ==========================================================
-    print("\n🧠 Training MLP Neural Network...")
+    print("\n Training MLP Neural Network...")
     mlp = MLPRegressor(hidden_layer_sizes=(128, 64, 32),
                        activation='relu',
                        solver='adam',
@@ -246,56 +246,14 @@ def main():
         print(f"{name}:  R² = {r2:.3f} | RMSE = {rmse:.3f}")
         return r2, rmse
 
-    print("\n📊 Model Performance Summary:")
-    eval_model("🌲 Random Forest", y_test, rf_pred)
-    eval_model("🧠 MLP Neural Net", y_test, mlp_pred)
+    print("\n Model Performance Summary:")
+    eval_model(" Random Forest", y_test, rf_pred)
+    eval_model(" MLP Neural Net", y_test, mlp_pred)
 
     # ==========================================================
-    # 📈 Visualization
+    #  Rainfall vs Stock Price (Correlation Visualization)
     # ==========================================================
-    # plt.figure(figsize=(11,5))
-    # plt.plot(y_test.values, label="Actual", color="#1f77b4")
-    # plt.plot(rf_pred, label="Random Forest", color="#2ca02c", alpha=0.8)
-    # plt.plot(mlp_pred, label="MLP Prediction", color="#d62728", alpha=0.7)
-    # plt.title("Predicted vs Actual Future Stock Change After Flooding", fontsize=12)
-    # plt.xlabel("Flood Events (chronological)")
-    # plt.ylabel("Δ Stock Price (Next Month)")
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.show()
-    # # ==========================================================
-    # # 💹 Reconstruct Stock Prices (from predicted deltas)
-    # # ==========================================================
-    # print("\n💹 Reconstructing stock price curves from predictions...")
-
-    # # Get the last 20% of actual stock prices (test set)
-    # start_index = int(len(df) * 0.8)
-    # actual_prices = df["Close"].iloc[start_index:].values
-    # start_price = actual_prices[0]
-
-    # # Build cumulative predicted price sequences
-    # pred_rf_prices = [start_price]
-    # pred_mlp_prices = [start_price]
-    # for i in range(len(rf_pred)):
-    #     pred_rf_prices.append(pred_rf_prices[-1] + rf_pred[i])
-    #     pred_mlp_prices.append(pred_mlp_prices[-1] + mlp_pred[i])
-
-    # # Plot actual vs predicted stock prices
-    # plt.figure(figsize=(11,5))
-    # plt.plot(actual_prices, label="Actual Stock Price", color="blue")
-    # plt.plot(pred_rf_prices[:-1], label="Predicted RF Price", color="green", alpha=0.8)
-    # plt.plot(pred_mlp_prices[:-1], label="Predicted MLP Price", color="red", alpha=0.7)
-    # plt.title("Predicted vs Actual Stock Price (Reconstructed from Flood Data)", fontsize=12)
-    # plt.xlabel("Time (test set portion)")
-    # plt.ylabel("Stock Price ($)")
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.show()
-
-    # ==========================================================
-    # 🌧️ Rainfall vs Stock Price (Correlation Visualization)
-    # ==========================================================
-    print("\n🌧️ Plotting rainfall vs stock price correlation per company...")
+    print("\n Plotting rainfall vs stock price correlation per company...")
 
     for company in df["Company"].unique():
         sub = df[df["Company"] == company].sort_values("Date")
@@ -331,12 +289,12 @@ def main():
 
         # --- Print correlation for quick insight ---
         corr = sub[["FloodAmount", "Close"]].corr().iloc[0, 1]
-        print(f"   💧 {company}: Flood–Stock correlation = {corr:.3f}")
+        print(f"    {company}: Flood–Stock correlation = {corr:.3f}")
 
     # ==========================================================
-    # 📊 Per-company: Actual vs Predicted Stock Price (test split)
+    #  Per-company: Actual vs Predicted Stock Price (test split)
     # ==========================================================
-    print("\n📈 Plotting per-company price curves (test portion)...")
+    print("\n Plotting per-company price curves (test portion)...")
 
     for company in df["Company"].unique():
         sub = df[df["Company"] == company].copy()
@@ -373,9 +331,9 @@ def main():
         plt.show()
     
      # ==========================================================
-    # 🔮 Combined Past Predictions + 6-Month Geometric Flood Forecast
+    #  Combined Past Predictions + 6-Month Geometric Flood Forecast
     # ==========================================================
-    print("\n🔮 Generating 6-Month Extended Forecasts (geometric rainfall increase)...")
+    print("\n Generating 6-Month Extended Forecasts (geometric rainfall increase)...")
 
     horizon = 6
     decreasing_future_rows = []
@@ -392,7 +350,7 @@ def main():
         last_date = pd.to_datetime(sub["Date"].max())
         last_price = float(sub["Close"].iloc[-1])
 
-        # 🌧️ Geometric rainfall growath: multiplies each month (exponential style)
+        #  Geometric rainfall growath: multiplies each month (exponential style)
         decreasing_floods = np.geomspace(1500, 100, horizon)
         increasing_floods = np.geomspace(100, 1500, horizon)
         static_low_floods = np.geomspace(100, 100, horizon)
@@ -549,7 +507,7 @@ def main():
         plt.show()
 
         # Print future flood values for transparency
-        print(f"\n🌧️ Synthetic flood values for {company}:")
+        print(f"\n Synthetic flood values for {company}:")
         print(future_decreasing_df[["Date", "FloodAmount"]])
         print(future_increasing_df[["Date", "FloodAmount"]])
         print(future_static_low_df[["Date", "FloodAmount"]])
@@ -577,7 +535,7 @@ def main():
         ignore_index=True
     )
     
-    print("\n📈 Head of future forecast table:")
+    print("\n Head of future forecast table:")
     print(decreasing_forecasts[["Company", "Date", "FloodAmount"]].head())
     print(increasing_forecasts[["Company", "Date", "FloodAmount"]].head())
     print(static_low_forecasts[["Company", "Date", "FloodAmount"]].head())
@@ -586,7 +544,7 @@ def main():
 
 
 # ==========================================================
-# 4️⃣ ENTRY POINT
+#  ENTRY POINT
 # ==========================================================
 if __name__ == "__main__":
     main()
