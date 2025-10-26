@@ -6,23 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuantOre</title>
 
-    <!-- NEW: Added Favicon -->
     <link rel="icon" href="favicon.png">
 
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/papaparse@latest/papaparse.min.js"></script>
 
-    <!-- Leaflet.js (for maps) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-    <!-- Chart.js (for financial charts) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
 
-    <!-- PapaParse (for CSV parsing) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
 
     <style>
@@ -270,7 +265,7 @@
         /* Input styles */
         .dark-input {
             background-color: rgba(55, 65, 81, 0.7);
-            /* bg-gray-700 */
+            /* bg-gray-700, matches input */
             border: 1px solid #4B5563;
             /* border-gray-600 */
             color: white;
@@ -388,28 +383,51 @@
         /* .leaflet-mine-marker.glowing-marker { ... } */
         /* This redundant block has been deleted */
     </style>
+    <style>
+        /* === Neon Chatbox Styles === */
+
+        /* Neon green glowing border for chatbot popup */
+        #chatbot-panel {
+            border: 2px solid #39FF14;
+            box-shadow:
+                0 0 10px #39FF14,
+                0 0 20px #39FF14,
+                0 0 30px #39FF14;
+            border-radius: 12px;
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* Remove glow when hidden */
+        #chatbot-panel.hidden {
+            box-shadow: none;
+            border: none;
+        }
+
+        /* Neon green glowing text */
+        .text-neon-highlight {
+            color: #39FF14;
+            text-shadow: 0 0 4px #39FF14, 0 0 8px #39FF14;
+        }
+    </style>
+
 </head>
 
 <body class="bg-gray-900">
     <script src="data.js"></script>
 
-    <!-- The Map -->
     <div id="map"></div>
 
-    <!-- Loading Overlay -->
     <div id="loading-overlay">
         <div class="spinner"></div>
         <span>Loading Geo-Financial Data...</span>
     </div>
 
-    <!-- Mobile Panel Toggle Button -->
     <button id="mobile-toggle-btn" class="p-2 bg-gray-900/80 backdrop-blur-md text-white rounded-lg lg:hidden">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
         </svg>
     </button>
 
-    <!-- New UI Toggle Button -->
     <button id="toggle-ui-btn" class="p-2 text-white rounded-lg">
         <svg id="icon-hide" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
             stroke="currentColor" stroke-width="2">
@@ -422,28 +440,23 @@
             <path stroke-linecap="round" stroke-linejoin="round"
                 d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7 1.274-4.057 5.064-7 9.542-7 .847 0 1.67.11 2.458.31M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             <path stroke-linecap="round" stroke-linejoin="round"
-                d="M17.593 17.593l-1.414-1.414M1.172 1.172l1.414 1.414m5.21 5.21l-1.414-1.414M17.593 1.172l-1.414 1.414m-5.21 5.21l1.414 1.414M1.172 17.593l1.414-1.414m5.21-5.21l-1.414 1.414" />
+                d="M17.593 17.593l-1.414-1.414M1.172 1.172l1.414 1.414m5.21 5.21l-1.414-1.414M17.593 1.172l-1.414 1.414m-5.21 5.21l-1.414 1.414M1.172 17.593l1.414-1.414m5.21-5.21l-1.414 1.414" />
         </svg>
     </button>
 
-    <!-- Left Sidebar (Company List) -->
     <div id="sidebar-left" class="ui-panel p-4">
         <h1 class="text-2xl font-bold mb-4 text-neon-highlight">QuantOre</h1>
         <div class="mb-4">
             <input type="text" id="search-box" placeholder="Search companies..."
                 class="w-full p-2 rounded-lg dark-input">
         </div>
-        <!-- Company List Container -->
         <div id="company-list" class="flex-grow overflow-y-auto space-y-1 pr-2">
-            <!-- Company items will be injected here by JS -->
         </div>
     </div>
 
-    <!-- Right Sidebar (Layers & Filters) -->
     <div id="sidebar-right" class="ui-panel p-4">
         <h2 class="text-xl font-semibold mb-6 text-neon-highlight">Layers & Analysis</h2>
 
-        <!-- Layer Toggles -->
         <div class="space-y-4 mb-8">
             <label class="flex items-center space-x-3 cursor-pointer">
                 <input type="checkbox" id="toggle-mines" checked>
@@ -451,29 +464,18 @@
             </label>
             <label class="flex items-center space-x-3 cursor-pointer">
                 <input type="checkbox" id="toggle-weather">
-                <span class="text-gray-200">Global Weather Radar (Sim)</span>
-            </label>
-            <label class="flex items-center space-x-3 cursor-pointer">
-                <input type="checkbox" id="toggle-disasters">
-                <span class="text-gray-200">Climate Disaster Risk (Sim)</span>
-            </label>
-            <label class="flex items-center space-x-3 cursor-pointer">
-                <input type="checkbox" id="toggle-targeted-risk">
-                <span class="text-gray-200">Targeted Mine Risk (Sim)</span>
+                <span class="text-gray-200">Light Mode</span>
             </label>
         </div>
 
-        <!-- Time Slider -->
         <div class="space-y-3">
             <label for="year-slider" class="text-gray-300">Select Year for Risk Analysis</label>
-            <input type="range" id="year-slider" min="2025" max="2030" value="2025" step="1" class="w-full">
+            <input type="range" id="year-slider" min="2025" max="2028" value="2025" step="0.5" class="w-full">
             <div class="text-center text-xl font-bold text-neon-highlight" id="selected-year">2025</div>
         </div>
     </div>
 
-    <!-- Bottom Panel (Charts & Info) -->
     <div id="bottom-panel" class="ui-panel p-4">
-        <!-- Panel Header -->
         <div class="flex justify-between items-center mb-2">
             <div class="flex items-center gap-3">
                 <button id="prev-company-btn" class="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white">
@@ -498,7 +500,6 @@
             </button>
         </div>
 
-        <!-- Charts Container -->
         <div id="charts-container" class="h-[calc(100%-4.5rem)] relative">
             <div id="chart-loader">
                 <div class="spinner"></div>
@@ -509,7 +510,6 @@
                 <canvas id="financials-chart" style="display: none;"></canvas>
             </div>
         </div>
-        <!-- New Chart Toggle -->
         <div class="flex justify-center items-center gap-4 mt-2">
             <button id="prev-chart-btn" class="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
@@ -528,8 +528,9 @@
     </div>
 
 
-    <!-- JAVASCRIPT LOGIC -->
-    <script type="module">
+    <script>
+        // Import necessary data from data.js
+
         // ----- APPLICATION STATE -----
         let map;
         let companyData = [];
@@ -539,8 +540,8 @@
         let targetedRiskLayer;
         let companyMarkers = {};
         let currentCompanyIndex = -1; // Track the currently selected company
-        let currentChartIndex = 0; // 0 = stock, 1 = financials
-        const chartTitles = ['Stock Price', 'Financials'];
+        let currentChartIndex = 0; // 0 = stock, 1 = market forecast, 2 = financials
+        const chartTitles = ['Stock Price', 'Market Forecast', 'Financials'];
         const charts = {
             stock: null,
             financials: null
@@ -550,9 +551,6 @@
 
         // API Key
         const ALPHA_VANTAGE_API_KEY = '9BYTM0MFLXJ0UVN8';
-        //N0O5FGQ1PC79KYM0 Old
-        //New for demo 9VNS35SEQKFF2BRB
-        //For use now 9BYTM0MFLXJ0UVN8
 
         /**
          * Generates a massive mock financial dataset for 50 companies over 20 years.
@@ -561,7 +559,6 @@
         function generateMockFinancialData(companies) {
             const data = {};
             const startDate = new Date('2005-01-01');
-            // const endDate = new Date('2025-01-01'); // Unused variable
 
             // Helper to add months
             function addMonths(date, months) {
@@ -1129,7 +1126,7 @@
             };
         }
 
-        // ----- NEW REAL DATA PARSING -----
+        // ----- NEW REAL DATA PARSING (imported from data.js) -----
 
         // Helper to parse coordinates like "119.75° E" or "-22.55° S"
         function parseCoordinates(lngStr, latStr) {
@@ -1379,7 +1376,7 @@
                 // SIMULATION: In a real app, this would be a weather tile URL.
                 // We will simulate it with a semi-transparent blue layer.
                 weatherLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    opacity: 0.3,
+                    opacity: 1,
                     attribution: 'Simulated Weather Layer'
                 }).addTo(map);
             } else if (weatherLayer && map.hasLayer(weatherLayer)) {
@@ -1387,68 +1384,6 @@
             }
         }
 
-        function toggleDisasterLayer() {
-            updateDisasterLayer();
-        }
-
-        function toggleTargetedRiskLayer() {
-            updateDisasterLayer();
-        }
-
-        function updateDisasterLayer() {
-            const year = document.getElementById('year-slider').value;
-            const disasterChecked = document.getElementById('toggle-disasters').checked;
-            const targetedChecked = document.getElementById('toggle-targeted-risk').checked;
-
-            // Clear existing layers
-            if (disasterLayer) map.removeLayer(disasterLayer);
-            if (targetedRiskLayer) map.removeLayer(targetedRiskLayer);
-
-            disasterLayer = L.layerGroup();
-            targetedRiskLayer = L.layerGroup();
-
-            // SIMULATION: Generate random disaster "hotspots" based on the year
-            if (disasterChecked) {
-                const numDisasters = 20 + ((year - 2025) * 4) + (Math.random() * 10); // Steeper increase for 5 years
-                for (let i = 0; i < numDisasters; i++) {
-                    const lat = Math.random() * 160 - 80;
-                    const lng = Math.random() * 360 - 180;
-                    const radius = (Math.random() * 500000) + 200000;
-                    L.circle([lat, lng], {
-                        radius: radius,
-                        color: 'orange',
-                        fillColor: 'orange',
-                        fillOpacity: 0.3,
-                        weight: 1
-                    })
-                        .bindPopup(`Simulated Climate Risk Zone<br>Year: ${year}`)
-                        .addTo(disasterLayer);
-                }
-                disasterLayer.addTo(map);
-            }
-
-            // SIMULATION: Generate "targeted" risks around the mines
-            if (targetedChecked) {
-                MOCK_MINE_GEOJSON.features.forEach(feature => {
-                    // Simulate risk based on year and random chance
-                    const riskFactor = 0.2 + ((year - 2025) / 5) + Math.random() * 0.3; // Simulates risk from 2025-2030
-                    if (riskFactor > 0.8) { // Only show high-risk
-                        const [lng, lat] = feature.geometry.coordinates;
-                        const riskRadius = riskFactor * 100000;
-                        L.circle([lat, lng], {
-                            radius: riskRadius,
-                            color: 'red',
-                            fillColor: 'red',
-                            fillOpacity: 0.4,
-                            weight: 1
-                        })
-                            .bindPopup(`High Climate Risk Alert<br>Site: ${feature.properties.name}<br>Year: ${year}`)
-                            .addTo(targetedRiskLayer);
-                    }
-                });
-                targetedRiskLayer.addTo(map);
-            }
-        }
 
         // ----- EVENT LISTENERS -----
 
@@ -1461,8 +1396,8 @@
                 document.getElementById('toggle-mines').checked ? addMineLayer() : map.removeLayer(mineLayer);
             });
             document.getElementById('toggle-weather').addEventListener('change', toggleWeatherLayer);
-            document.getElementById('toggle-disasters').addEventListener('change', toggleDisasterLayer);
-            document.getElementById('toggle-targeted-risk').addEventListener('change', toggleTargetedRiskLayer);
+
+
 
             // Year Slider
             const yearSlider = document.getElementById('year-slider');
@@ -1512,18 +1447,7 @@
             document.getElementById('bottom-panel').classList.add('open');
 
             // 2. Update charts - NOW WITH LIVE DATA FALLBACK
-            let realStockData = null;
-            try {
-                showChartLoading(true);
-                realStockData = await fetchRealStockData(company.Symbol);
-                // If API call was successful, realStockData will be populated
-            } catch (error) {
-                console.warn(`Live API call failed for ${company.Symbol}. Using mock data. Error:`, error.message);
-                // realStockData remains null, app will use mock data
-            } finally {
-                showChartLoading(false);
-                updateCharts(company, realStockData); // Pass real data (or null) to chart renderer
-            }
+            await updateCharts(company);
 
             // 3. Highlight and fly to map markers
             if (companyMarkers[company.Symbol]) {
@@ -1531,29 +1455,24 @@
                 map.flyToBounds(group.getBounds().pad(0.5), { duration: 1.0 });
 
                 // Highlight selected markers
-                companyMarkers[company.Symbol].forEach(marker => {
-                    // Apply style...
-                    marker.setStyle({ radius: 6, weight: 2 }); // Highlight: SAME size, heavier border
-                    // ...and add glow class
-                    marker.getElement().classList.add('glowing-marker');
+                Object.keys(companyMarkers).forEach(symbol => {
+                    companyMarkers[symbol].forEach(marker => {
+                        // Reset style/highlight for ALL markers first
+                        const primary = marker.feature.properties.primaryCommodity;
+                        const color = commodityColors[primary] || commodityColors['default'];
+                        marker.setStyle({
+                            radius: 6,
+                            color: color,
+                            weight: 1
+                        });
+                        marker.getElement().classList.remove('glowing-marker');
+                    });
                 });
 
-                // Reset other markers
-                Object.keys(companyMarkers).forEach(symbol => {
-                    if (symbol !== company.Symbol) {
-                        companyMarkers[symbol].forEach(marker => {
-                            // Reset style...
-                            const primary = marker.feature.properties.primaryCommodity;
-                            const color = commodityColors[primary] || commodityColors['default'];
-                            marker.setStyle({
-                                radius: 6,
-                                color: color,
-                                weight: 1
-                            }); // Reset to original (no white border)
-                            // ...and remove glow class
-                            marker.getElement().classList.remove('glowing-marker');
-                        });
-                    }
+                // Apply highlight to SELECTED markers
+                companyMarkers[company.Symbol].forEach(marker => {
+                    marker.setStyle({ radius: 6, weight: 2 });
+                    marker.getElement().classList.add('glowing-marker');
                 });
             }
 
@@ -1608,11 +1527,8 @@
 
         // ----- CHARTING -----
 
-        // ----- CHARTING -----
-
         /**
          * Fetches REAL stock data from Alpha Vantage.
-         * This will likely fail due to CORS or rate limiting, hence the try/catch in onCompanySelect.
          */
         async function fetchRealStockData(symbol) {
             // Handle symbols with exchange suffixes (e.g., "601088.SS" -> "601088.SHA")
@@ -1674,6 +1590,41 @@
             }
 
             return { labels, priceData };
+        }
+        /**
+         * Generates fake monthly rainfall data for a given symbol over the 2005-2025 period.
+         * Used as a backup for companies without real rain data (all except BHP and CCJ).
+         */
+        function generateFakeRainData(symbol, refLabels) {
+            const labels = refLabels;
+            const rainData = [];
+            let maxRain = 0;
+
+            // Generate data points corresponding to the refLabels
+            labels.forEach(label => {
+                const year = parseInt(label.substring(0, 4));
+                const month = parseInt(label.substring(5, 7));
+
+                // Use a simple sine wave to simulate seasonality (higher in summer months 6-8)
+                const date = new Date(year, month - 1, 1);
+                let base = (Math.sin((date.getMonth() / 12) * 2 * Math.PI) + 1.5) * 5;
+
+                // Add randomness based on the month and company symbol (for slight variation)
+                let randomFactor = (Math.random() * 5);
+                if (symbol.length > 3) randomFactor += symbol.charCodeAt(0) % 5;
+
+                let discharge = parseFloat((base + randomFactor).toFixed(2));
+
+                // Keep peak low unless it's BHP/CCJ to ensure they stand out
+                if (discharge > 15) discharge = 15 + Math.random() * 5;
+
+                if (discharge > maxRain) {
+                    maxRain = discharge;
+                }
+                rainData.push(discharge);
+            });
+
+            return { labels: labels, data: rainData, maxData: maxRain };
         }
 
         /**
@@ -1747,7 +1698,7 @@
             chartTitleEl.innerText = chartTitles[currentChartIndex];
 
             if (currentChartIndex === 0) {
-                // Show Stock Chart
+                // Show Stock Chart (Stock + Rain for BHP/CCJ)
                 stockCanvas.style.display = 'block';
                 financialsCanvas.style.display = 'none';
 
@@ -1765,35 +1716,448 @@
                 // --- END FETCH ---
 
             } else {
-                // Show Financials Chart
+                // Show Financials Chart (or Market Forecast placeholder)
                 stockCanvas.style.display = 'none';
                 financialsCanvas.style.display = 'block';
 
-                // --- FETCH LIVE FINANCIAL DATA (with cache) ---
-                let realFinancialsData = null;
-                try {
-                    showChartLoading(true);
-                    if (financialsCache[company.Symbol]) {
-                        console.log(`Using cached financial data for ${company.Symbol}`);
-                        realFinancialsData = financialsCache[company.Symbol];
-                    } else {
-                        console.log(`Fetching new financial data for ${company.Symbol}`);
-                        const [income, balance] = await Promise.all([
-                            fetchIncomeStatement(company.Symbol),
-                            fetchBalanceSheet(company.Symbol)
-                        ]);
-                        realFinancialsData = { income, balance };
-                        financialsCache[company.Symbol] = realFinancialsData; // Save to cache
+                if (currentChartIndex === 1) {
+                    // Market Forecast (Using Financials chart container for mock display)
+                    drawMarketForecastChart(company);
+                } else if (currentChartIndex === 2) {
+                    // Actual Financials
+                    // --- FETCH LIVE FINANCIAL DATA (with cache) ---
+                    let realFinancialsData = null;
+                    try {
+                        showChartLoading(true);
+                        if (financialsCache[company.Symbol]) {
+                            console.log(`Using cached financial data for ${company.Symbol}`);
+                            realFinancialsData = financialsCache[company.Symbol];
+                        } else {
+                            console.log(`Fetching new financial data for ${company.Symbol}`);
+                            const [income, balance] = await Promise.all([
+                                fetchIncomeStatement(company.Symbol),
+                                fetchBalanceSheet(company.Symbol)
+                            ]);
+                            realFinancialsData = { income, balance };
+                            financialsCache[company.Symbol] = realFinancialsData; // Save to cache
+                        }
+                    } catch (error) {
+                        console.warn(`Live financial API call failed for ${company.Symbol}. Using mock data. Error:`, error.message);
+                    } finally {
+                        showChartLoading(false);
+                        drawFinancialsChart(company, realFinancialsData);
                     }
-                } catch (error) {
-                    console.warn(`Live financial API call failed for ${company.Symbol}. Using mock data. Error:`, error.message);
-                } finally {
-                    showChartLoading(false);
-                    drawFinancialsChart(company, realFinancialsData);
+                    // --- END FETCH ---
                 }
-                // --- END FETCH ---
             }
         }
+
+        // ----- NEW HELPER FUNCTION: Parse Daily to Monthly Close Price -----
+        // Used exclusively by drawMarketForecastChart for BHP's historical CSV data.
+        function parseDailyToMonthlyClose(csvString, start, end) {
+            const parsed = Papa.parse(csvString.trim(), { header: true, skipEmptyLines: true });
+            const monthlyData = {};
+
+            // Find the relevant column names (Date and Close)
+            const dateCol = parsed.meta.fields.find(f => /date/i.test(f) || /Snapshot/i.test(f) || /day/i.test(f));
+            const closeCol = parsed.meta.fields.find(f => /Close/i.test(f));
+
+            if (!dateCol || !closeCol) {
+                console.error("CSV must contain columns named 'Date' and 'Close'.");
+                return { labels: [], data: [] };
+            }
+
+            parsed.data.forEach(row => {
+                const dateStr = row[dateCol];
+                const closePrice = parseFloat(row[closeCol]);
+
+                if (dateStr && !isNaN(closePrice)) {
+                    const monthKey = dateStr.slice(0, 7); // 'YYYY-MM'
+
+                    // Only process data within the target range (Jan 2021 to Sep 2025)
+                    if (monthKey.localeCompare(start) >= 0 && monthKey.localeCompare(end) <= 0) {
+                        // Keep track of the *last* date's closing price for each month.
+                        if (!monthlyData[monthKey] || dateStr > monthlyData[monthKey].date) {
+                            monthlyData[monthKey] = {
+                                date: dateStr,
+                                price: closePrice
+                            };
+                        }
+                    }
+                }
+            });
+
+            // Convert the map into sorted arrays
+            const labels = Object.keys(monthlyData).sort();
+            const data = labels.map(key => monthlyData[key].price);
+
+            return { labels: labels, data: data };
+        }
+        // ----- END NEW HELPER FUNCTION -----  // ----- NEW HELPER FUNCTION: Parse Daily to Monthly Close Price -----
+        // Used exclusively by drawMarketForecastChart for BHP's historical CSV data.
+        function parseDailyToMonthlyClose(csvString, start, end) {
+            const parsed = Papa.parse(csvString.trim(), { header: true, skipEmptyLines: true });
+            const monthlyData = {};
+
+            // Find the relevant column names (Date and Close)
+            const dateCol = parsed.meta.fields.find(f => /date/i.test(f) || /Snapshot/i.test(f) || /day/i.test(f));
+            const closeCol = parsed.meta.fields.find(f => /Close/i.test(f));
+
+            if (!dateCol || !closeCol) {
+                console.error("CSV must contain columns named 'Date' and 'Close'.");
+                return { labels: [], data: [] };
+            }
+
+            parsed.data.forEach(row => {
+                const dateStr = row[dateCol];
+                const closePrice = parseFloat(row[closeCol]);
+
+                if (dateStr && !isNaN(closePrice)) {
+                    const monthKey = dateStr.slice(0, 7); // 'YYYY-MM'
+
+                    // Only process data within the target range (Jan 2021 to Sep 2025)
+                    if (monthKey.localeCompare(start) >= 0 && monthKey.localeCompare(end) <= 0) {
+                        // Keep track of the *last* date's closing price for each month.
+                        if (!monthlyData[monthKey] || dateStr > monthlyData[monthKey].date) {
+                            monthlyData[monthKey] = {
+                                date: dateStr,
+                                price: closePrice
+                            };
+                        }
+                    }
+                }
+            });
+
+            // Convert the map into sorted arrays
+            const labels = Object.keys(monthlyData).sort();
+            const data = labels.map(key => monthlyData[key].price);
+
+            return { labels: labels, data: data };
+        }
+        // ----- END NEW HELPER FUNCTION -----
+
+        // MODIFIED: drawMarketForecastChart now handles BHP's specific historical + forecast data
+        function drawMarketForecastChart(company) {
+            const ctx = document.getElementById('financials-chart').getContext('2d');
+            if (charts.financials) charts.financials.destroy();
+
+            // --- SPECIAL LOGIC: BHP Forecast (Historical + Forecast Stock Price + Rainfall) ---
+            if (company.Symbol === 'BHP') {
+                const START_DATE_HIST = '2021-01';
+                const END_DATE_HIST = '2025-09';
+
+                // 1. Process Historical Data (from simulated CSV)
+                const historicalData = [
+                    ['Jan 2021', 61.93],
+                    ['Feb 2021', 70.4],
+                    ['Mar 2021', 64.35],
+                    ['Apr 2021', 67.48],
+                    ['May 2021', 68.73],
+                    ['Jun 2021', 67.54],
+                    ['Jul 2021', 72.85],
+                    ['Aug 2021', 61.34],
+                    ['Sept 2021', 49.63],
+                    ['Oct 2021', 50.86],
+                    ['Nov 2021', 52.11],
+                    ['Dec 2021', 55.97],
+                    ['Jan 2022', 58.98],
+                    ['Feb 2022', 62.87],
+                    ['Mar 2022', 71.64],
+                    ['Apr 2022', 62.12],
+                    ['May 2022', 65.53],
+                    ['Jun 2022', 56.18],
+                    ['Jul 2022', 55.04],
+                    ['Aug 2022', 54.89],
+                    ['Sept 2022', 50.04],
+                    ['Oct 2022', 47.82],
+                    ['Nov 2022', 62.8],
+                    ['Dec 2022', 62.05],
+                    ['Jan 2023', 70.15],
+                    ['Feb 2023', 60.97],
+                    ['Mar 2023', 63.41],
+                    ['Apr 2023', 59.04],
+                    ['May 2023', 54.9],
+                    ['Jun 2023', 59.67],
+                    ['Jul 2023', 62.65],
+                    ['Aug 2023', 57.49],
+                    ['Sept 2023', 56.88],
+                    ['Oct 2023', 57.06],
+                    ['Nov 2023', 60.96],
+                    ['Dec 2023', 68.31],
+                    ['Jan 2024', 61.22],
+                    ['Feb 2024', 57.34],
+                    ['Mar 2024', 57.69],
+                    ['Apr 2024', 55.16],
+                    ['May 2024', 59.53],
+                    ['Jun 2024', 57.09],
+                    ['Jul 2024', 55.53],
+                    ['Aug 2024', 55.13],
+                    ['Sept 2024', 62.11],
+                    ['Oct 2024', 55.46],
+                    ['Nov 2024', 52.65],
+                    ['Dec 2024', 48.83],
+                    ['Jan 2025', 49.15],
+                    ['Feb 2025', 48.48],
+                    ['Mar 2025', 48.54],
+                    ['Apr 2025', 47.55],
+                    ['May 2025', 48.99],
+                    ['Jun 2025', 48.09],
+                    ['Jul 2025', 50.67],
+                    ['Aug 2025', 55.77],
+                    ['Sept 2025', 55.75],
+                    ['Oct 2025', 55.62]
+                ];
+                const historicalLabels = [];
+                const historicalPriceData = [];
+
+                // 2. Prepare Forecast Data
+                const bhpForecastRawData = [
+                    ['Nov 2025', 56.2, 0.00], ['Dec 2025', 56.9, 0.00], ['Jan 2026', 57.4, 0.00], ['Feb 2026', 57.4, 0.00],
+                    ['Mar 2026', 59.7, 0.00], ['Apr 2026', 59.1, 0.01], ['May 2026', 60, 0.02], ['Jun 2026', 62.1, 0.00],
+                    ['Jul 2026', 61.8, 0.00], ['Aug 2026', 62.7, 0.00], ['Sept 2026', 61.3, 0.00], ['Oct 2026', 58.1, 0.00],
+                    ['Nov 2026', 59.2, 0.00], ['Dec 2026', 58.3, 0.00], ['Jan 2027', 59.3, 0.00], ['Feb 2027', 62.1, 0.01],
+                    ['Mar 2027', 63.5, 0.01], ['Apr 2027', 65.1, 0.01], ['May 2027', 64.8, 0.00], ['Jun 2027', 64.2, 0.00],
+                    ['Jul 2027', 67, 0.01], ['Aug 2027', 68.1, 0.00], ['Sept 2027', 69.5, 0.00], ['Oct 2027', 69.8, 0.00],
+                    ['Nov 2027', 66.7, 0.00],
+                    ['Dec 2027', 67.5, 0.00] // Added Dec 2027 to ensure full range to Dec 2027
+                ];
+
+                let forecastLabels = [];
+                let forecastPriceData = [];
+                let forecastRainData = [];
+                const monthMap = { 'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08', 'Sept': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12' };
+
+                bhpForecastRawData.forEach(item => {
+                    const [monthStr, yearStr] = item[0].split(' ');
+                    forecastLabels.push(`${yearStr}-${monthMap[monthStr]}`);
+                    forecastPriceData.push(item[1]);
+                    forecastRainData.push(item[2]);
+                });
+
+                historicalData.forEach(item => {
+                    const [monthStr, yearStr] = item[0].split(' ');
+                    historicalLabels.push(`${yearStr}-${monthMap[monthStr]}`);
+                    historicalPriceData.push(item[1]);
+                });
+
+                // 3. Combine Data (Historical + Gap + Forecast)
+                let allLabels = [...historicalLabels];
+
+                // Data arrays for datasets
+                let historicalStockDataset = [...historicalPriceData];
+                let forecastStockDataset = Array(historicalLabels.length).fill(null);
+                let allRainDataset = Array(historicalLabels.length).fill(null);
+
+                // // Handle the **October 2025 gap**
+                // const lastHistMonth = historicalLabels.length > 0 ? historicalLabels[historicalLabels.length - 1] : '2020-12';
+                // if (lastHistMonth.localeCompare('2025-09') === 0) {
+                //     allLabels.push('2025-10');
+                //     historicalStockDataset.push(null);
+                //     forecastStockDataset.push(null);
+                //     allRainDataset.push(null);
+                // }
+
+                // Append forecast data
+                allLabels = allLabels.concat(forecastLabels);
+                historicalStockDataset = historicalStockDataset.concat(Array(forecastPriceData.length).fill(null));
+                forecastStockDataset = forecastStockDataset.concat(forecastPriceData);
+                allRainDataset = allRainDataset.concat(forecastRainData);
+
+                // Calculate max values for axes
+                const maxPrice = Math.max(...historicalPriceData, ...forecastPriceData) * 1.05;
+                const maxRain = Math.max(...forecastRainData) * 1.5;
+
+                const datasets = [
+                    // Historical Stock Price (Solid Green)
+                    {
+                        label: 'Stock Price (Historical)',
+                        data: historicalStockDataset,
+                        borderColor: '#39FF14', // Neon Green
+                        backgroundColor: 'rgba(57, 255, 20, 0.1)',
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        yAxisID: 'y-price',
+                        borderWidth: 2,
+                        spanGaps: true,
+                        order: 3 // On top of everything
+                    },
+                    // Forecast Stock Price (Dashed Red with Dots)
+                    {
+                        label: 'BNP Stock Price Forecast',
+                        data: forecastStockDataset,
+                        borderColor: '#FF073A', // Neon Red/Pink
+                        backgroundColor: 'transparent',
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 3, // Dots
+                        borderWidth: 2,
+                        borderDash: [5, 5], // Dashed line
+                        yAxisID: 'y-price',
+                        spanGaps: true,
+                        order: 4 // On top of historical
+                    },
+                    // Rainfall Forecast (Bar, Cyan)
+                    {
+                        type: 'line',
+                        label: 'Rainfall Forecast (m³/s)',
+                        data: allRainDataset,
+                        borderColor: '#00E5FF', // Neon Red/Pink
+                        backgroundColor: '#00E5FF', // Semi-transparent Cyan
+                        yAxisID: 'y-rain',
+                        order: 1 // Behind price lines
+                    }
+                ];
+
+                const chartConfig = {
+                    type: 'line',
+                    data: { labels: allLabels, datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            'y-price': {
+                                type: 'linear',
+                                position: 'left',
+                                beginAtZero: false,
+                                max: maxPrice,
+                                ticks: { color: '#9CA3AF' },
+                                grid: { color: 'rgba(55, 65, 81, 0.5)' },
+                                title: { display: true, text: 'Price (USD)', color: '#9CA3AF' }
+                            },
+                            'y-rain': {
+                                type: 'linear',
+                                position: 'right',
+                                beginAtZero: true,
+                                max: maxRain,
+                                ticks: { color: '#00E5FF' },
+                                grid: { display: false },
+                                title: { display: true, text: 'Rainfall (m³/s)', color: '#00E5FF' }
+                            },
+                            x: {
+                                ticks: { color: '#9CA3AF' },
+                                grid: { display: false }
+                            }
+                        },
+                        plugins: {
+                            legend: { labels: { color: '#D1D5DB' } },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function (context) {
+                                        let label = context.dataset.label || '';
+                                        if (context.parsed.y !== null) {
+                                            if (context.dataset.yAxisID === 'y-price') {
+                                                label += `: $${context.parsed.y.toFixed(2)}`;
+                                            } else {
+                                                label += `: ${context.parsed.y.toFixed(2)} m³/s`;
+                                            }
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+
+                charts.financials = new Chart(ctx, chartConfig);
+                return;
+            }
+
+            // --- DEFAULT LOGIC (Market Cap Forecast for other companies) ---
+
+            // This section remains UNIMPACTED, ensuring other companies' forecasts work as before.
+            const mockCompany = companyData.find(c => c.Symbol === company.Symbol);
+            const labels = ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025'];
+            let baseMarketCap = 50;
+            if (MOCK_FINANCIAL_DATA[mockCompany.Symbol] && MOCK_FINANCIAL_DATA[mockCompany.Symbol].length > 0) {
+                baseMarketCap = parseFloat(MOCK_FINANCIAL_DATA[mockCompany.Symbol][MOCK_FINANCIAL_DATA[mockCompany.Symbol].length - 1].marketcap) / 1000;
+            }
+
+            const mockForecast = labels.map((_, i) => baseMarketCap * (1 + Math.random() * 0.05 + (i * 0.01)));
+
+            charts.financials = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Market Cap Forecast (Billion USD)',
+                        data: mockForecast,
+                        borderColor: '#FFD700',
+                        backgroundColor: 'rgba(255, 215, 0, 0.2)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#FFD700',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#9CA3AF' }, grid: { color: 'rgba(55, 65, 81, 0.5)' } },
+                        y: { beginAtZero: false, ticks: { color: '#9CA3AF' }, grid: { color: 'rgba(55, 65, 81, 0.5)' }, title: { display: true, text: 'Billion USD', color: '#9CA3AF' } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#D1D5DB' } },
+                        tooltip: { mode: 'index', intersect: false }
+                    }
+                }
+            });
+        }
+        // Placeholder for Market Forecast - using financial chart canvas
+        const ctx = document.getElementById('financials-chart').getContext('2d');
+        if (charts.financials) charts.financials.destroy();
+
+        // Simple data for the mockup
+        const labels = ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025'];
+        const mockForecast = labels.map((_, i) => parseFloat(company.marketcap) / 1e9 * (1 + Math.random() * 0.05 + (i * 0.01))); // increasing forecast
+
+        charts.financials = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Market Cap Forecast (Billion USD)',
+                    data: mockForecast,
+                    borderColor: '#FFD700', // Gold color for forecast
+                    backgroundColor: 'rgba(255, 215, 0, 0.2)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#FFD700',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        ticks: { color: '#9CA3AF' },
+                        grid: { color: 'rgba(55, 65, 81, 0.5)' }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        ticks: { color: '#9CA3AF' },
+                        grid: { color: 'rgba(55, 65, 81, 0.5)' },
+                        title: {
+                            display: true,
+                            text: 'Billion USD',
+                            color: '#9CA3AF'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: '#D1D5DB' } },
+                    tooltip: { mode: 'index', intersect: false }
+                }
+            }
+        });
+
+
 
         function drawStockChart(company, realStockData) {
             const companyFinancials = MOCK_FINANCIAL_DATA[company.Symbol];
@@ -1802,6 +2166,8 @@
                 console.warn(`No financial data found for ${company.Symbol}`);
                 return;
             }
+
+            const stockCtx = document.getElementById('stock-chart').getContext('2d');
 
             let labels, priceData, sourceLabel;
 
@@ -1821,48 +2187,217 @@
                 }
             }
 
-            // ----- Stock Price Chart (Line) -----
-            const stockCtx = document.getElementById('stock-chart').getContext('2d');
+            // --- 1. Base Stock Data Series ---
+            const datasets = [{
+                label: sourceLabel,
+                data: priceData,
+                borderColor: '#39FF14', // Neon Green (Requested: opposite of old Cyan/Blue)
+                backgroundColor: 'rgba(57, 255, 20, 0.1)', // Neon Green tint
+                fill: true,
+                tension: 0.1,
+                pointRadius: 0,
+                yAxisID: 'y' // Primary Y-axis for Price
+            }];
 
-            if (charts.stock) charts.stock.destroy();
+            // --- 2. Rain Data Series (if applicable) ---
+            // Determine if the company has hardcoded rain data (BHP or CCJ)
+            const rainDataKey = company.Symbol === ' ' ? ' ' : (company.Symbol === ' ' ? ' ' : null);
 
-            charts.stock = new Chart(stockCtx, {
-                type: 'line',
+            let finalRainData = null;
+
+            if (rainDataKey) {
+                // Determine which raw CSV string to pass to the processing function
+                // FIX: Use the correct variable names imported from data.js (bhp_rain, cameco_rain)
+                const rawCsv = rainDataKey === 'BHP' ? bhp_rain : cameco_rain;
+
+                // Call the parsing function with the raw CSV data
+                const rainChartData = parseDailyToMonthlyMean(rawCsv);
+
+                // If data parsing yielded results, use it (handles null return from parseDailyToMonthlyMean)
+                if (rainChartData) {
+                    finalRainData = rainChartData;
+                }
+            } else if (company.Symbol !== 'METSO.HE') {
+                // Fallback: Use Fake Rain Data for all other companies (excluding Metso)
+                finalRainData = generateFakeRainData(company.Symbol, labels);
+            }
+
+            // --- 3. Integrate Rain Data into Datasets and Axes ---
+            // Initialize the axis configuration for the Chart.js options structure
+            const axisConfig = {
+                y: {
+                    beginAtZero: false,
+                    position: 'left',
+                    ticks: { color: '#9CA3AF' },
+                    grid: { color: 'rgba(55, 65, 81, 0.5)' },
+                    title: {
+                        display: true,
+                        text: 'Price (USD)',
+                        color: '#9CA3AF'
+                    }
+                }
+            };
+
+            if (finalRainData && finalRainData.data && finalRainData.data.length > 0) {
+                const rainData = finalRainData;
+
+                // Align rain data points to the main stock chart labels.
+                const alignedRainData = labels.map(dateLabel => {
+                    // All stock labels must be standardized to 'YYYY-MM' for lookup.
+                    const monthLabel = dateLabel.substring(0, 7);
+                    const index = rainData.labels.indexOf(monthLabel);
+
+                    // If the monthly rain data exists, return the value; otherwise, null for gap.
+                    return index > -1 ? rainData.data[index] : null;
+                });
+
+                // Add Rain dataset (River Discharge)
+                datasets.push({
+                    type: 'line',
+                    label: 'Mean River Discharge (m³/s)',
+                    data: alignedRainData,
+                    borderColor: '#00E5FF', // Neon Cyan
+                    backgroundColor: 'rgba(0, 229, 255, 0.1)', // Light fill
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 0,
+                    yAxisID: 'y1', // Secondary Y-axis for Rain
+                    order: 1 // Draw the rain line behind the stock line
+                });
+
+                // Add secondary Y-axis configuration
+                axisConfig.y1 = {
+                    beginAtZero: true,
+                    position: 'right',
+                    ticks: { color: '#00E5FF' },
+                    grid: {
+                        display: true,
+                        drawOnChartArea: false, // Hide vertical lines but show tick marks
+                        color: 'rgba(0, 229, 255, 0.2)'
+                    },
+                    title: {
+                        display: true,
+                        text: 'River Discharge (m³/s)',
+                        color: '#00E5FF'
+                    },
+                    // Use the dynamically calculated maxData for appropriate scaling.
+                    max: rainData.maxData > 0 ? rainData.maxData * 1.2 : 15,
+                    min: 0
+                };
+            }
+
+            if (finalRainData && finalRainData.data && finalRainData.data.length > 0) {
+                const rainData = finalRainData;
+
+                // Align rain data points to the main stock chart labels.
+                const alignedRainData = labels.map(dateLabel => {
+                    // All stock labels must be standardized to 'YYYY-MM' for lookup.
+                    const monthLabel = dateLabel.substring(0, 7);
+                    const index = rainData.labels.indexOf(monthLabel);
+
+                    // If the monthly rain data exists, return the value; otherwise, null for gap.
+                    return index > -1 ? rainData.data[index] : null;
+                });
+
+                // Add Rain dataset (River Discharge)
+                datasets.push({
+                    type: 'line',
+                    label: 'Mean River Discharge (m³/s)',
+                    data: alignedRainData,
+                    borderColor: '#00E5FF', // Neon Cyan
+                    backgroundColor: 'rgba(0, 229, 255, 0.1)', // Light fill
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 0,
+                    yAxisID: 'y1', // Secondary Y-axis for Rain
+                    order: 1 // Draw the rain line behind the stock line
+                });
+
+                // Add secondary Y-axis configuration
+                axisConfig.y1 = {
+                    beginAtZero: true,
+                    position: 'right',
+                    ticks: { color: '#00E5FF' },
+                    grid: {
+                        display: true,
+                        drawOnChartArea: false, // Hide vertical lines but show tick marks
+                        color: 'rgba(0, 229, 255, 0.2)'
+                    },
+                    title: {
+                        display: true,
+                        text: 'River Discharge (m³/s)',
+                        color: '#00E5FF'
+                    },
+                    // Use the dynamically calculated maxData for appropriate scaling.
+                    max: rainData.maxData > 0 ? rainData.maxData * 1.2 : 15,
+                    min: 0
+                };
+            }
+
+            // Define the chart configuration
+            const chartConfig = {
+                type: 'line', // Base type is line
                 data: {
                     labels: labels,
-                    datasets: [{
-                        label: sourceLabel,
-                        data: priceData,
-                        borderColor: '#00E5FF', // Neon Cyan
-                        backgroundColor: 'rgba(0, 229, 255, 0.1)', // Neon Cyan tint
-                        fill: true,
-                        tension: 0.1,
-                        pointRadius: 0,
-                    }]
+                    datasets: datasets
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
                     scales: {
                         x: {
+                            stacked: false,
                             ticks: { color: '#9CA3AF' },
-                            grid: { color: 'rgba(55, 65, 81, 0.5)' }
+                            grid: { display: false }
                         },
-                        y: {
-                            beginAtZero: false, // Y-axis will no longer start at 0
-                            ticks: { color: '#9CA3AF' },
-                            grid: { color: 'rgba(55, 65, 81, 0.5)' }
-                        }
+                        ...axisConfig // Merge the axis configurations
                     },
                     plugins: {
-                        legend: { labels: { color: '#D1D5DB' } },
+                        legend: {
+                            labels: {
+                                color: '#D1D5DB',
+                                boxWidth: 10,
+                                padding: 15
+                            }
+                        },
                         tooltip: {
                             mode: 'index',
                             intersect: false,
+                            callbacks: {
+                                // Add m³/s unit to rainfall tooltip
+                                label: function (context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y.toFixed(2);
+                                        // Check if this dataset uses the secondary axis (y1)
+                                        if (context.dataset.yAxisID === 'y1') {
+                                            label += ' m³/s';
+                                        } else {
+                                            label += ' USD';
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
                         }
                     }
                 }
-            });
+            };
+
+            // Destroy existing chart instance to prevent memory leaks and redraw
+            if (charts.stock) {
+                charts.stock.destroy();
+            }
+
+            // Create the new chart
+            charts.stock = new Chart(stockCtx, chartConfig);
         }
 
         function drawFinancialsChart(company, realFinancialsData = null) {
@@ -2007,6 +2542,23 @@
         }
 
     </script>
+    <!-- CHATBOT UI -->
+    <button id="chatbot-toggle"
+        class="fixed bottom-4 right-4 bg-green-500 hover:bg-green-400 text-white font-bold py-2 px-4 rounded-full shadow-lg z-[1003]">
+        💬
+    </button>
+
+    <div id="chatbot-panel"
+        class="hidden fixed bottom-20 right-4 w-80 bg-gray-900/90 backdrop-blur-lg border border-gray-700 rounded-2xl p-4 z-[1003] flex flex-col max-h-[70vh]">
+        <div id="chat-output" class="flex-1 overflow-y-auto text-gray-200 mb-3 space-y-2"></div>
+        <div class="flex">
+            <input id="chat-input" type="text" placeholder="Ask QuantOre AI..."
+                class="flex-1 rounded-l-lg bg-gray-800 text-white px-3 py-2 outline-none border border-gray-700 focus:border-green-400">
+            <button id="chat-send" class="bg-green-500 hover:bg-green-400 text-white rounded-r-lg px-3">Send</button>
+        </div>
+    </div>
+
+    <script type="module" src="gemini.js"></script>
 </body>
 
 </html>
