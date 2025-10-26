@@ -393,10 +393,10 @@ def main():
         last_price = float(sub["Close"].iloc[-1])
 
         # 🌧️ Geometric rainfall growath: multiplies each month (exponential style)
-        decreasing_floods = np.geomspace(5, 1, horizon)
-        increasing_floods = np.geomspace(1, 5, horizon)
-        static_low_floods = np.geomspace(1, 1, horizon)
-        static_high_floods = np.geomspace(4, 4, horizon)
+        decreasing_floods = np.geomspace(1500, 100, horizon)
+        increasing_floods = np.geomspace(100, 1500, horizon)
+        static_low_floods = np.geomspace(100, 100, horizon)
+        static_high_floods = np.geomspace(1500, 1500, horizon)
 
 
         for i in range(horizon):
