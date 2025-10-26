@@ -10,14 +10,24 @@
 import os
 import numpy as np
 import pandas as pd
+import tkinter as tk
 
-# --- Fix Matplotlib backend for headless or Tk errors ---
+# --- Fix Matplotlib backend for GUI / non-GUI environments ---
 import matplotlib
 try:
+    # Try Tk first
     import tkinter
-    matplotlib.use('TkAgg')  # normal interactive backend
+    matplotlib.use('TkAgg')
 except Exception:
-    matplotlib.use('Agg')  # fallback for environments without GUI
+    # Fallback: non-interactive backend (renders to file or buffer)
+    matplotlib.use('Agg')
+
+# Force backend sanity check on Windows (prevents Win32 null pointer crash)
+if matplotlib.get_backend().lower() == 'tkagg':
+    try:
+        import matplotlib.backends.backend_tkagg
+    except Exception:
+        matplotlib.use('Agg')  # fallback again if Tk fails
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -123,15 +133,22 @@ def load_company_data(company, file_list):
         return pd.DataFrame()
 
     merged = pd.concat(dfs, ignore_index=True)
-    grouped = merged.groupby("Date").agg({
+
+    # --- Convert daily data to monthly averages ---
+    merged["Date"] = pd.to_datetime(merged["Date"])
+    merged = merged.set_index("Date")
+
+    # Resample daily → monthly (end of month)
+    monthly = merged.resample("M").agg({
         "Latitude": "mean",
         "Longitude": "mean",
         "FloodAmount": "mean"
     }).reset_index()
-    grouped["Company"] = company
 
-    tqdm.write(f"✅ {company}: {len(dfs)} valid sites processed")
-    return grouped
+    monthly["Company"] = company
+
+    tqdm.write(f"✅ {company}: {len(dfs)} valid sites processed and aggregated monthly")
+    return monthly
 
 
 def add_stock_data(company_data):
@@ -146,7 +163,7 @@ def add_stock_data(company_data):
         return pd.DataFrame()
 
     stock = pd.read_csv(stock_file)
-    stock["Date"] = pd.to_datetime(stock["Date"], format="%m/%Y", errors="coerce")
+    stock["Date"] = pd.to_datetime(stock["Date"], format="%m/%Y", errors="coerce") + pd.offsets.MonthEnd(0)
     stock["Company"] = company
     stock["Close"] = pd.to_numeric(stock["Close"].astype(str).str.replace(",", ""), errors="coerce")
     stock = stock.dropna(subset=["Date", "Close"])
@@ -307,7 +324,10 @@ def main():
 
         plt.gcf().autofmt_xdate(rotation=45)
         plt.tight_layout()
-        plt.show()
+        os.makedirs("plots", exist_ok=True)
+        plt.savefig(f"plots/{company}_chart.png", dpi=300, bbox_inches="tight")
+        plt.close()
+
 
         # --- Print correlation for quick insight ---
         corr = sub[["FloodAmount", "Close"]].corr().iloc[0, 1]
@@ -373,10 +393,10 @@ def main():
         last_price = float(sub["Close"].iloc[-1])
 
         # 🌧️ Geometric rainfall growath: multiplies each month (exponential style)
-        decreasing_floods = np.geomspace(1500, 100, horizon)
-        increasing_floods = np.geomspace(100, 1500, horizon)
-        static_low_floods = np.geomspace(100, 100, horizon)
-        static_high_floods = np.geomspace(1500, 1500, horizon)
+        decreasing_floods = np.geomspace(5, 1, horizon)
+        increasing_floods = np.geomspace(1, 5, horizon)
+        static_low_floods = np.geomspace(1, 1, horizon)
+        static_high_floods = np.geomspace(4, 4, horizon)
 
 
         for i in range(horizon):
@@ -507,13 +527,13 @@ def main():
         plt.plot(sub["Date"], sub["RF_Price"], "g--", label="RF Predicted (Last 24m)")
         plt.plot(sub["Date"], sub["MLP_Price"], "r--", label="MLP Predicted (Last 24m)")
         # plt.plot(future_decreasing_df["Date"], future_decreasing_df["Pred_RF_Price"], "go--", color="red",label="RF Forecast (Next 6m)")
-        plt.plot(future_decreasing_df["Date"], future_decreasing_df["Pred_MLP_Price"], "ro--", color="orange", label="MLP Forecast (Next 6m)")
+        plt.plot(future_decreasing_df["Date"], future_decreasing_df["Pred_MLP_Price"], "ro--", color="red", label="MLP Forecast (Next 6m)")
         # plt.plot(future_increasing_df["Date"], future_increasing_df["Pred_RF_Price"], "go--", color="green",label="RF Forecast (Next 6m)")
-        plt.plot(future_increasing_df["Date"], future_increasing_df["Pred_MLP_Price"], "ro--", color="black", label="MLP Forecast (Next 6m)")
+        plt.plot(future_increasing_df["Date"], future_increasing_df["Pred_MLP_Price"], "ro--", color="green", label="MLP Forecast (Next 6m)")
         # plt.plot(future_static_low_df["Date"], future_static_low_df["Pred_RF_Price"], "go--", color="teal",label="RF Forecast (Next 6m)")
         plt.plot(future_static_low_df["Date"], future_static_low_df["Pred_MLP_Price"], "ro--", color="gray", label="MLP Forecast (Next 6m)")
         # plt.plot(future_static_high_df["Date"], future_static_high_df["Pred_RF_Price"], "go--", color="pink",label="RF Forecast (Next 6m)")
-        plt.plot(future_static_high_df["Date"], future_static_high_df["Pred_MLP_Price"], "ro--", color="brown", label="MLP Forecast (Next 6m)")
+        plt.plot(future_static_high_df["Date"], future_static_high_df["Pred_MLP_Price"], "ro--", color="black", label="MLP Forecast (Next 6m)")
 
         plt.axvline(sub["Date"].iloc[-1], color="gray", linestyle="--", alpha=0.7)
         plt.text(sub["Date"].iloc[-1], plt.ylim()[1]*0.95, "Forecast Start", rotation=90, color="gray")
